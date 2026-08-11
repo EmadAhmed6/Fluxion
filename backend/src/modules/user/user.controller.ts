@@ -8,16 +8,76 @@ import {
 } from "./user.model.js";
 import fs from "fs";
 import bcrypt from "bcryptjs";
-import { verifyEmailOTP } from "../auth/auth.controller.js";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const users = await User.find()
+    const { search, role, provider } = req.query as {
+      search: string;
+      role: string;
+      provider: string;
+    };
+    const pageNumber = Number(req.query.pageNumber) || 1;
+    const userPerPage = 10;
+
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { jobTitle: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (role) {
+      query.role = role;
+    }
+    if (provider) {
+      query.provider = provider;
+    }
+
+    // const users = await User.aggregate([
+    //   { $match: query },
+    //   {
+    //     $addFields: {
+    //       roleOrder: {
+    //         $switch: {
+    //           branches: [
+    //             { case: { eq: ["$role", "SuperAdmin"] }, then: 1 },
+    //             { case: { eq: ["$role", "Admin"] }, then: 2 },
+    //             { case: { eq: ["$role", "User"] }, then: 3 },
+    //           ],
+    //           default: 4,
+    //         },
+    //       },
+    //     },
+    //   },
+    //   { $sort: { roleOrder: 1, createdAt: -1 } },
+    //   { $skip: (pageNumber - 1) * userPerPage },
+    //   { $limit: userPerPage },
+    //   { $project: { roleOrder: 0, password: 0 } },
+    // ]);
+    const users = await User.find(query)
+      .skip((pageNumber - 1) * userPerPage)
+      .limit(userPerPage)
       .sort({ isAdmin: -1, createdAt: -1 })
       .select("-password");
 
-    res.status(200).json({ success: true, data: users });
+    const totalUsers = await User.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      message: "Users fetched successfully",
+      data: {
+        users,
+        page: pageNumber,
+        pages: Math.ceil(totalUsers / userPerPage),
+        limit: userPerPage,
+        totalUsers: totalUsers,
+      },
+    });
     return;
   },
 );

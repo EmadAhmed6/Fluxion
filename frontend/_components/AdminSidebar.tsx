@@ -34,7 +34,7 @@ export default function AdminSidebar({
     pathname === "/admin/dashboard/users" || pathname === "/admin/dashboard";
   const isPostsActive = pathname === "/admin/dashboard/posts";
 
-  const rawUsersList = Array.isArray(users) ? users : [];
+  const rawUsersList = Array.isArray(users) ? users : users?.users || [];
   const allUsersList = rawUsersList.map((u) => {
     const isCurrent =
       currentUser &&

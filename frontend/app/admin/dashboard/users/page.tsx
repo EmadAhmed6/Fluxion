@@ -34,15 +34,15 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function AdminUsersPage() {
   const { data: currentUser, isLoading: isAuthLoading } = useGetAuthMeQuery();
-  const { data: users, isLoading: isUsersLoading } = useGetAllUsers();
-  const { data: posts } = useGetPosts();
-  const deleteUserMutation = useDeleteUser();
-  const toggleAdminMutation = useToggleAdminStatus();
-  const { t, isArabic } = useLanguage();
 
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [jobTitleFilter, setJobTitleFilter] = useState("");
+  const [debouncedJobTitle, setDebouncedJobTitle] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "user">("all");
+  const [providerFilter, setProviderFilter] = useState<"all" | "local" | "google" | "github">("all");
+  const [pageNumber, setPageNumber] = useState(1);
   const [userToEdit, setUserToEdit] = useState<string | null>(null);
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<{
     id: string;
@@ -52,6 +52,45 @@ export default function AdminUsersPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPageNumber(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedJobTitle(jobTitleFilter);
+      setPageNumber(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [jobTitleFilter]);
+
+  const handleRoleFilterChange = (newRole: "all" | "admin" | "user") => {
+    setRoleFilter(newRole);
+    setPageNumber(1);
+  };
+
+  const handleProviderFilterChange = (newProvider: "all" | "local" | "google" | "github") => {
+    setProviderFilter(newProvider);
+    setPageNumber(1);
+  };
+
+  const { data: usersData, isLoading: isUsersLoading } = useGetAllUsers({
+    search: debouncedSearch,
+    role: roleFilter === "all" ? undefined : roleFilter === "admin" ? "Admin" : "User",
+    provider: providerFilter === "all" ? undefined : providerFilter,
+    jobTitle: debouncedJobTitle || undefined,
+    pageNumber,
+  });
+
+  const { data: posts } = useGetPosts();
+  const deleteUserMutation = useDeleteUser();
+  const toggleAdminMutation = useToggleAdminStatus();
+  const { t, isArabic } = useLanguage();
 
   if (!mounted || isAuthLoading) {
     return (
@@ -65,6 +104,7 @@ export default function AdminUsersPage() {
   }
 
   const BackIcon = isArabic ? ArrowRight : ArrowLeft;
+  const NextIcon = isArabic ? ArrowLeft : ArrowRight;
 
   if (currentUser?.role !== "Admin" && currentUser?.role !== "SuperAdmin") {
     return (
@@ -106,36 +146,14 @@ export default function AdminUsersPage() {
     );
   }
 
-  const allUsersList = Array.isArray(users) ? users : [];
+  const allUsersList = Array.isArray(usersData) ? usersData : usersData?.users || [];
   const allPostsList = Array.isArray(posts) ? posts : [];
+  const currentPage = usersData?.page || pageNumber;
+  const totalPages = usersData?.pages || 1;
+  const totalUsers = usersData?.totalUsers ?? allUsersList.length;
 
-  const filteredUsers = allUsersList
-    .filter((u) => {
-      if (roleFilter === "admin" && u.role !== "Admin" && u.role !== "SuperAdmin") return false;
-      if (roleFilter === "user" && (u.role === "Admin" || u.role === "SuperAdmin")) return false;
-
-      const q = searchQuery.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        u.username?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.jobTitle?.toLowerCase().includes(q) ||
-        u.fullName?.toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      if (a.role === "SuperAdmin" && b.role !== "SuperAdmin") return -1;
-      if (a.role !== "SuperAdmin" && b.role === "SuperAdmin") return 1;
-
-      if ((a.role === "Admin" || a.role === "SuperAdmin") && b.role === "User") return -1;
-      if (a.role === "User" && (b.role === "Admin" || b.role === "SuperAdmin")) return 1;
-
-      return 0;
-    });
-
-  const totalUsers = allUsersList.length;
   const adminUsersCount = allUsersList.filter((u) => u.role === "Admin" || u.role === "SuperAdmin").length;
-  const regularUsersCount = totalUsers - adminUsersCount;
+  const regularUsersCount = allUsersList.filter((u) => u.role === "User").length;
 
   const handleConfirmDeleteUser = async () => {
     if (!selectedUserToDelete) return;
@@ -187,7 +205,7 @@ export default function AdminUsersPage() {
 
           {/* Main Content Area */}
           <div className="lg:col-span-9 space-y-6">
-            {/* Section Header & Search */}
+            {/* Section Header & Filters */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <Text as="h2" size="xl" font="bold" color="primary">
@@ -195,15 +213,30 @@ export default function AdminUsersPage() {
                 </Text>
               </div>
 
-              <div className="relative w-full md:w-72">
-                <Search className="absolute ltr:left-3.5 rtl:right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" />
-                <input
-                  type="text"
-                  placeholder={t.admin.searchUsers}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full ltr:pl-10 ltr:pr-4 rtl:pr-10 rtl:pl-4 py-2 text-xs rounded-xl bg-bgSecondary border border-borderPrimary text-textPrimary outline-none focus:ring-2 focus:ring-primary"
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Provider Select Filter */}
+                <select
+                  value={providerFilter}
+                  onChange={(e) => handleProviderFilterChange(e.target.value as any)}
+                  className="px-3 py-2 text-xs rounded-xl bg-bgSecondary border border-borderPrimary text-textPrimary outline-none focus:ring-2 focus:ring-primary cursor-pointer font-medium"
+                >
+                  <option value="all">{t.admin.allProviders}</option>
+                  <option value="local">{t.admin.localProvider}</option>
+                  <option value="google">{t.admin.googleProvider}</option>
+                  <option value="github">{t.admin.githubProvider}</option>
+                </select>
+
+                {/* Search Input */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute ltr:left-3.5 rtl:right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" />
+                  <input
+                    type="text"
+                    placeholder={t.admin.searchUsers}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full ltr:pl-10 ltr:pr-4 rtl:pr-10 rtl:pl-4 py-2 text-xs rounded-xl bg-bgSecondary border border-borderPrimary text-textPrimary outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
               </div>
             </div>
 
@@ -211,7 +244,7 @@ export default function AdminUsersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
                 type="button"
-                onClick={() => setRoleFilter("all")}
+                onClick={() => handleRoleFilterChange("all")}
                 className={`p-5 rounded-2xl bg-bgSecondary/70 border transition-all text-left rtl:text-right flex items-center gap-4 cursor-pointer hover:border-primary ${
                   roleFilter === "all"
                     ? "border-primary ring-2 ring-primary/20 shadow-md"
@@ -233,7 +266,7 @@ export default function AdminUsersPage() {
 
               <button
                 type="button"
-                onClick={() => setRoleFilter("admin")}
+                onClick={() => handleRoleFilterChange("admin")}
                 className={`p-5 rounded-2xl bg-bgSecondary/70 border transition-all text-left rtl:text-right flex items-center gap-4 cursor-pointer hover:border-amber-500 ${
                   roleFilter === "admin"
                     ? "border-amber-500 ring-2 ring-amber-500/20 shadow-md"
@@ -255,7 +288,7 @@ export default function AdminUsersPage() {
 
               <button
                 type="button"
-                onClick={() => setRoleFilter("user")}
+                onClick={() => handleRoleFilterChange("user")}
                 className={`p-5 rounded-2xl bg-bgSecondary/70 border transition-all text-left rtl:text-right flex items-center gap-4 cursor-pointer hover:border-emerald-500 ${
                   roleFilter === "user"
                     ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-md"
@@ -282,7 +315,7 @@ export default function AdminUsersPage() {
                 <div className="flex justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : filteredUsers.length === 0 ? (
+              ) : allUsersList.length === 0 ? (
                 <div className="py-16 text-center">
                   <Text as="p" size="xs" color="secondary">
                     {isArabic
@@ -299,6 +332,7 @@ export default function AdminUsersPage() {
                           {isArabic ? "اليوزر" : "User"}
                         </th>
                         <th className="px-6 py-4">Email</th>
+                        <th className="px-6 py-4">{t.admin.provider}</th>
                         <th className="px-6 py-4">{t.profile.jobTitle}</th>
                         <th className="px-6 py-4">{t.admin.role}</th>
                         <th className="px-6 py-4">{t.profile.joined}</th>
@@ -308,7 +342,7 @@ export default function AdminUsersPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-borderPrimary/30 text-textPrimary font-medium">
-                      {filteredUsers.map((userItem) => (
+                      {allUsersList.map((userItem) => (
                         <tr
                           key={userItem._id}
                           className="hover:bg-bgSecondary/80 transition-colors"
@@ -375,6 +409,22 @@ export default function AdminUsersPage() {
                               >
                                 —
                               </Text>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {userItem.provider === "google" ? (
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 w-fit">
+                                Google
+                              </span>
+                            ) : userItem.provider === "github" ? (
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/20 w-fit">
+                                GitHub
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 w-fit">
+                                Email
+                              </span>
                             )}
                           </td>
 
@@ -452,7 +502,7 @@ export default function AdminUsersPage() {
 
                           <td className="px-6 py-4 whitespace-nowrap ltr:text-right rtl:text-left">
                             <div className="flex items-center justify-end gap-2">
-                              {/* Edit button: SuperAdmin can edit anyone; Admin can edit non-SuperAdmin targets */}
+                              {/* Edit button */}
                               {(currentUser?.role === "SuperAdmin" || userItem.role !== "SuperAdmin") && (
                                 <Tooltip
                                   position="top"
@@ -490,7 +540,7 @@ export default function AdminUsersPage() {
                                 </Tooltip>
                               )}
 
-                              {/* Promote / Demote Admin button - visible strictly to SuperAdmin on non-SuperAdmin targets */}
+                              {/* Promote / Demote Admin button */}
                               {currentUser?.role === "SuperAdmin" &&
                                 userItem.role !== "SuperAdmin" && (
                                   <Tooltip
@@ -557,6 +607,59 @@ export default function AdminUsersPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-borderPrimary/40 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bgSecondary/30">
+                  <Text as="p" size="xs" color="secondary">
+                    {isArabic
+                      ? `صفحة ${currentPage} من ${totalPages} (إجمالي ${totalUsers} مستخدم)`
+                      : `Page ${currentPage} of ${totalPages} (${totalUsers} total users)`}
+                  </Text>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1 || isUsersLoading}
+                      className="rounded-xl text-xs gap-1 cursor-pointer"
+                    >
+                      <BackIcon className="h-3.5 w-3.5" />
+                      <Text as="span" size="xs" color="primary">
+                        {t.admin.previousPage}
+                      </Text>
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPageNumber(p)}
+                        disabled={isUsersLoading}
+                        className={`h-8 w-8 p-0 rounded-xl text-xs font-bold cursor-pointer ${
+                          p === currentPage ? "bg-primary text-white" : ""
+                        }`}
+                      >
+                        {p}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages || isUsersLoading}
+                      className="rounded-xl text-xs gap-1 cursor-pointer"
+                    >
+                      <Text as="span" size="xs" color="primary">
+                        {t.admin.nextPage}
+                      </Text>
+                      <NextIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

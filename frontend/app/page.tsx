@@ -49,9 +49,11 @@ function HomeContent() {
   // Synchronize initial page results
   useEffect(() => {
     if (initialPosts) {
-      setFeedPosts(initialPosts);
+      const postsArr = Array.isArray(initialPosts) ? initialPosts : initialPosts.posts || [];
+      const totalP = initialPosts.totalPages || 1;
+      setFeedPosts(postsArr);
       setCurrentPage(1);
-      setHasMore(initialPosts.length >= POSTS_PER_PAGE);
+      setHasMore(1 < totalP && postsArr.length >= POSTS_PER_PAGE);
       setFetchError(null);
     }
   }, [initialPosts]);
@@ -65,11 +67,14 @@ function HomeContent() {
 
     try {
       const nextPage = currentPage + 1;
-      const newPosts = await getAllPosts({
+      const response = await getAllPosts({
         pageNumber: nextPage,
         search: search || undefined,
         category: selectedCategory !== "All" ? selectedCategory : undefined,
       });
+
+      const newPosts = Array.isArray(response) ? response : response?.posts || [];
+      const totalP = response?.totalPages || 1;
 
       if (newPosts && newPosts.length > 0) {
         setFeedPosts((prev) => {
@@ -78,7 +83,7 @@ function HomeContent() {
           return [...prev, ...filteredNew];
         });
         setCurrentPage(nextPage);
-        if (newPosts.length < POSTS_PER_PAGE) {
+        if (nextPage >= totalP || newPosts.length < POSTS_PER_PAGE) {
           setHasMore(false);
         }
       } else {

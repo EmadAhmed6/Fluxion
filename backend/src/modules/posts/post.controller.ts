@@ -11,9 +11,15 @@ import { User } from "../user/user.model.js";
 
 const getAllPosts = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const { search } = req.query as { search: string };
     const pageNumber = Number(req.query.pageNumber) || 1;
     const postsPerPage = 5;
-    const posts = await Post.find()
+    const query: any = {};
+    if (search) {
+      query.$or = [{ title: { $regex: search, $options: "i" } }];
+    }
+    const totalPosts = await Post.countDocuments(query);
+    const posts = await Post.find(query)
       .populate("user", [
         "_id",
         "username",
@@ -47,7 +53,16 @@ const getAllPosts = asyncHandler(
       .skip((pageNumber - 1) * postsPerPage)
       .limit(postsPerPage)
       .sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: posts });
+    res.status(200).json({
+      success: true,
+      data: {
+        posts,
+        page: pageNumber,
+        limit: postsPerPage,
+        totalPosts,
+        totalPages: Math.ceil(totalPosts / postsPerPage),
+      },
+    });
     return;
   },
 );

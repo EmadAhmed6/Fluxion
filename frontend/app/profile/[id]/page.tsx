@@ -110,11 +110,10 @@ export default function UserProfilePage() {
     setIsEditModalOpen(true);
   };
 
-  // Always prefer userPosts (from dedicated query) for live updates.
-  // Fall back to embedded posts in user profile only if userPosts is not yet loaded.
+  const fetchedUserPosts = Array.isArray(userPosts) ? userPosts : userPosts?.posts || [];
   const rawPosts: any[] =
-    userPosts && userPosts.length > 0
-      ? userPosts
+    fetchedUserPosts.length > 0
+      ? fetchedUserPosts
       : Array.isArray((userToDisplay as any)?.posts)
         ? (userToDisplay as any).posts
         : [];

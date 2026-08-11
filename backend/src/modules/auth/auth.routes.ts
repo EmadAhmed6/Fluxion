@@ -11,6 +11,7 @@ import {
 import { verifyToken } from "../../middlewares/verifyToken.js";
 import { authLimiter } from "../../middlewares/limiter.js";
 import passport from "passport";
+import { User } from "../user/user.model.js";
 const router = express.Router();
 
 router.post("/register", register);
@@ -22,6 +23,7 @@ router.post("/resend-otp", authLimiter, resendOTP);
 router.get("/me", verifyToken, getMe);
 
 // Github OAuth
+
 router.get(
   "/github",
   passport.authenticate("github", { scope: ["user:email"] }),

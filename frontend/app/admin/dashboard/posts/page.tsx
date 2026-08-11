@@ -34,12 +34,11 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function AdminPostsPage() {
   const { data: currentUser, isLoading: isAuthLoading } = useGetAuthMeQuery();
   const { data: users } = useGetAllUsers();
-  const { data: posts, isLoading: isPostsLoading } = useGetPosts();
-  const deletePostMutation = useDeletePost();
-  const { t, isArabic } = useLanguage();
 
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [pageNumber, setPageNumber] = useState(1);
   const [selectedPostToDelete, setSelectedPostToDelete] = useState<{
     id: string;
     title: string;
@@ -48,6 +47,22 @@ export default function AdminPostsPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPageNumber(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const { data: postsData, isLoading: isPostsLoading } = useGetPosts({
+    search: debouncedSearch || undefined,
+    pageNumber,
+  });
+
+  const deletePostMutation = useDeletePost();
+  const { t, isArabic } = useLanguage();
 
   if (!mounted || isAuthLoading) {
     return (
@@ -61,6 +76,7 @@ export default function AdminPostsPage() {
   }
 
   const BackIcon = isArabic ? ArrowRight : ArrowLeft;
+  const NextIcon = isArabic ? ArrowLeft : ArrowRight;
 
   if (currentUser?.role !== "Admin" && currentUser?.role !== "SuperAdmin") {
     return (
@@ -102,21 +118,12 @@ export default function AdminPostsPage() {
     );
   }
 
-  const allUsersList = Array.isArray(users) ? users : [];
-  const allPostsList = Array.isArray(posts) ? posts : [];
+  const allUsersList = Array.isArray(users) ? users : users?.users || [];
+  const allPostsList = Array.isArray(postsData) ? postsData : postsData?.posts || [];
+  const currentPage = postsData?.page || pageNumber;
+  const totalPages = postsData?.totalPages || 1;
+  const totalPosts = postsData?.totalPosts ?? allPostsList.length;
 
-  const filteredPosts = allPostsList.filter((p) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const authorName = typeof p.user === "object" ? p.user?.username : "";
-    return (
-      p.title?.toLowerCase().includes(q) ||
-      p.category?.toLowerCase().includes(q) ||
-      authorName?.toLowerCase().includes(q)
-    );
-  });
-
-  const totalPosts = allPostsList.length;
   const totalLikes = allPostsList.reduce(
     (acc, p) => acc + (p.likesCount || p.likes?.length || 0),
     0,
@@ -255,7 +262,7 @@ export default function AdminPostsPage() {
                 <div className="flex justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : filteredPosts.length === 0 ? (
+              ) : allPostsList.length === 0 ? (
                 <div className="py-16 text-center">
                   <Text as="p" size="xs" color="secondary">
                     {isArabic
@@ -288,7 +295,7 @@ export default function AdminPostsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-borderPrimary/30 text-textPrimary font-medium">
-                      {filteredPosts.map((postItem) => {
+                      {allPostsList.map((postItem) => {
                         const authorObj =
                           typeof postItem.user === "object"
                             ? postItem.user
@@ -522,6 +529,59 @@ export default function AdminPostsPage() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-borderPrimary/40 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bgSecondary/30">
+                  <Text as="p" size="xs" color="secondary">
+                    {isArabic
+                      ? `صفحة ${currentPage} من ${totalPages} (إجمالي ${totalPosts} بوست)`
+                      : `Page ${currentPage} of ${totalPages} (${totalPosts} total posts)`}
+                  </Text>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1 || isPostsLoading}
+                      className="rounded-xl text-xs gap-1 cursor-pointer"
+                    >
+                      <BackIcon className="h-3.5 w-3.5" />
+                      <Text as="span" size="xs" color="primary">
+                        {t.admin.previousPage}
+                      </Text>
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPageNumber(p)}
+                        disabled={isPostsLoading}
+                        className={`h-8 w-8 p-0 rounded-xl text-xs font-bold cursor-pointer ${
+                          p === currentPage ? "bg-primary text-white" : ""
+                        }`}
+                      >
+                        {p}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages || isPostsLoading}
+                      className="rounded-xl text-xs gap-1 cursor-pointer"
+                    >
+                      <Text as="span" size="xs" color="primary">
+                        {t.admin.nextPage}
+                      </Text>
+                      <NextIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

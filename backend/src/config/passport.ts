@@ -21,20 +21,16 @@ const configurePassport = () => {
           const email =
             profile.emails?.[0]?.value ??
             `${profile.username || profile.id}@github.com`;
-
           let user = await User.findOne({ email });
-
           if (!user) {
             const hashedPassword = await bcrypt.hash(
               Math.random().toString(36).slice(-10),
               10,
             );
-
             let username = profile.username || `user_${Date.now()}`;
             if (await User.findOne({ username })) {
               username = `${username}_${Math.floor(Math.random() * 1000)}`;
             }
-
             user = await User.create({
               fullName: profile.displayName || "GitHub User",
               username,
@@ -48,7 +44,6 @@ const configurePassport = () => {
               },
             });
           }
-
           return done(null, user);
         } catch (err) {
           return done(err);

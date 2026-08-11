@@ -52,7 +52,8 @@ const Navbar = () => {
 
   const filteredUsers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q || !allUsers || !Array.isArray(allUsers)) return [];
+    const usersList = Array.isArray(allUsers) ? allUsers : allUsers?.users || [];
+    if (!q || usersList.length === 0) return [];
 
     const cleanQuery = q.replace(/^@/, "");
 
@@ -74,7 +75,7 @@ const Navbar = () => {
       return 0;
     };
 
-    return allUsers
+    return usersList
       .map((u) => ({ user: u, rank: getRelevance(u) }))
       .filter((item) => item.rank > 0)
       .sort((a, b) => {
