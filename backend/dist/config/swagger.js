@@ -8,9 +8,9 @@ const options = {
     definition: {
         openapi: "3.0.0",
         info: {
-            title: "My Blog API",
+            title: "Fluxion API",
             version: "1.0.0",
-            description: "A professional Blog API built with Express, TS, and MongoDB",
+            description: "A professional social media API built with Express, TS, and MongoDB",
             contact: {
                 name: "Emad",
                 url: "https://emad-site.vercel.app/",

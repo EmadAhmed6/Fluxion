@@ -17,6 +17,7 @@ import passportGoogle from "passport-google-oauth20";
 import type { VerifyCallback } from "jsonwebtoken";
 import configurePassport from "./config/passport.js";
 const GoogleStrategy = passportGoogle.Strategy;
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 const app: Express = express();
@@ -28,8 +29,15 @@ app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
-app.use(session({ secret: process.env.JWT_SECRET_KEY || "secret", resave: false, saveUninitialized: true }));
+app.use(
+  session({
+    secret: process.env.JWT_SECRET_KEY || "secret",
+    resave: false,
+    saveUninitialized: true,
+  }),
+);
 app.use(passport.initialize());
 app.use(passport.session());
 configurePassport();
@@ -39,8 +47,6 @@ app.use("/users", apiLimiter, users);
 app.use("/posts", apiLimiter, posts);
 
 app.use("/api-docs", swaggerui.serve, swaggerui.setup(spacs));
-
-
 
 app.use(notFound);
 app.use(errorHandler);

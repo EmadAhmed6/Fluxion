@@ -1,14 +1,16 @@
 import express from "express";
-import { getAllUsers, getUserById, updateUser, deleteUser, uploadUserPicture, } from "./user.controller.js";
-import { verifyToken, verifyAuthorizedToken, verifyAdminToken, } from "../../middlewares/verifyToken.js";
+import { getAllUsers, getUserById, updateUser, deleteUser, toggleAdminStatus, changePassword, } from "./user.controller.js";
+import { verifyToken, verifyAuthorizedToken, verifyAdminToken, verifySuperAdminToken, } from "../../middlewares/verifyToken.js";
 import upload from "../../middlewares/multer.js";
+import { authLimiter } from "../../middlewares/limiter.js";
 const router = express.Router();
-router.post("/:id/upload", verifyAuthorizedToken, upload.single("profilePicture"), uploadUserPicture);
 router.route("/").get(verifyToken, getAllUsers);
+router.patch("/:userId/toggle-admin", verifySuperAdminToken, toggleAdminStatus);
 router
-    .route("/:id")
+    .route("/:userId")
     .get(verifyToken, getUserById)
-    .put(verifyAuthorizedToken, updateUser)
-    .delete(verifyAdminToken, deleteUser);
+    .put(verifyAuthorizedToken, upload.single("profilePicture"), updateUser)
+    .delete(verifyAuthorizedToken, deleteUser);
+router.post("/:userId/change-password", authLimiter, verifyAuthorizedToken, changePassword);
 export default router;
 //# sourceMappingURL=user.routes.js.map

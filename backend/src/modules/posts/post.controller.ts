@@ -224,7 +224,11 @@ const deletePost = asyncHandler(
     }
 
     const postOwner = await User.findById(post.user);
-    if (postOwner?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (
+      postOwner?.role === "SuperAdmin" &&
+      post.user.toString() !== req.user?.id &&
+      req.user?.role !== "SuperAdmin"
+    ) {
       res
         .status(403)
         .json({ success: false, message: "You can't delete Owner post" });

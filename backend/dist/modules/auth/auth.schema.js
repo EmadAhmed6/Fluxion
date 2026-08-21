@@ -5,9 +5,17 @@ const passwordSchema = z
     .max(72, "Password must be at most 72 characters")
     .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must include uppercase, lowercase, and numbers");
 const RegisterSchema = z.object({
-    username: z.string().min(3).max(10),
+    fullName: z.string().min(3).max(100).optional().or(z.literal("")),
+    username: z.string().min(3).max(50),
     email: z.string().email().trim().min(4),
     password: passwordSchema,
+});
+const AuthSchema = z.object({
+    username: z.string().min(3).max(50),
+    email: z.string().email().trim().min(4),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    otp: z.string().min(6, { message: "Otp Must be at least 6 digits" }),
 });
 const LoginSchema = z.object({
     email: z.string().email().trim().min(4),
@@ -29,5 +37,5 @@ const ResetPasswordSchema = z
     message: "Password does not match",
     path: ["confirmPassword"],
 });
-export { RegisterSchema, LoginSchema, ForgotPasswordSchema, ResetPasswordSchema, passwordSchema, OtpSchema, };
+export { RegisterSchema, LoginSchema, ForgotPasswordSchema, ResetPasswordSchema, passwordSchema, AuthSchema, OtpSchema, };
 //# sourceMappingURL=auth.schema.js.map

@@ -29,10 +29,9 @@ const register = asyncHandler(
       return;
     }
 
-    const user = await User.findOne({ $or: [{ email }, { username }] });
-
-    if (user) {
-      if (user?.provider !== "local") {
+    const userByEmail = await User.findOne({ email });
+    if (userByEmail) {
+      if (userByEmail.provider !== "local") {
         res.status(400).json({
           success: false,
           message: "Request failed",
@@ -41,19 +40,30 @@ const register = asyncHandler(
         return;
       }
 
-      if (user.isVerified) {
+      if (userByEmail.isVerified) {
         res.status(400).json({
           success: false,
           data: {
-            message:
-              user.email === email
-                ? "Account already exists with this email"
-                : "Account already exists with this username",
+            message: "Account already exists with this email",
           },
         });
         return;
       }
-      await User.deleteOne({ _id: user._id });
+      await User.deleteOne({ _id: userByEmail._id });
+    }
+
+    const userByUsername = await User.findOne({ username });
+    if (userByUsername) {
+      if (userByUsername.isVerified || userByUsername.provider !== "local") {
+        res.status(400).json({
+          success: false,
+          data: {
+            message: "Account already exists with this username",
+          },
+        });
+        return;
+      }
+      await User.deleteOne({ _id: userByUsername._id });
     }
 
     const genSalt = await bcrypt.genSalt(10);
@@ -67,7 +77,6 @@ const register = asyncHandler(
       username: req.body.username,
       email: req.body.email,
       password: req.body.password,
-      jobTitle: req.body.jobTitle || "User",
       isVerified: false,
       otp: generatedOtp,
       otpExpired,
@@ -82,20 +91,31 @@ const register = asyncHandler(
       generateOtpEmailHtml(finalUser.username, generatedOtp),
     );
 
-    const token = finalUser.generateToken();
+    const accessToken = finalUser.generateToken();
+    const refreshToken = finalUser.generateRefreshToken();
+    await finalUser.save({ validateBeforeSave: false });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     const {
       password: _,
       otp: __,
       otpExpired: ___,
+      refreshToken: ____,
       ...others
     } = finalUser.toObject();
 
     res.status(200).json({
       success: true,
+      message:
+        "Registered Successfully, Check your email for verification code",
       data: {
-        message:
-          "Registered Successfully, Check your email for verification code",
-        token,
+        token: accessToken,
         ...others,
       },
     });
@@ -114,9 +134,9 @@ const login = asyncHandler(
         .json({ message: error.issues[0]?.message || "Invalid Input" });
       return;
     }
-    const user = await User.findOne({ $or: [{ email }, { username }] }).select(
-      "+otp +otpExpired",
-    );
+    const user = await User.findOne({
+      $or: [{ username }, { email }],
+    }).select("+otp +otpExpired");
     if (!user) {
       res
         .status(400)
@@ -129,9 +149,11 @@ const login = asyncHandler(
         success: false,
         message: "Request failed",
         data: {
-          message: "This emails is already signed up via social login",
+          message:
+            "This account is signed up via social login. Please log in with social login.",
         },
       });
+      return;
     }
 
     const isPasswordMatch = await bcrypt.compare(
@@ -171,17 +193,29 @@ const login = asyncHandler(
       return;
     }
 
-    const token = user.generateToken();
+    const accessToken = user.generateToken();
+    const refreshToken = user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+
+    await user.save({ validateBeforeSave: false });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     const {
       password: _,
       otp: __,
       otpExpired: ___,
+      refreshToken: ____,
       ...others
     } = user.toObject();
     res.status(200).json({
       success: true,
       message: "Logged in successfully",
-      data: { ...others, token },
+      data: { ...others, token: accessToken },
     });
     return;
   },
@@ -228,6 +262,29 @@ const verifyEmailOTP = asyncHandler(
     return;
   },
 );
+
+const handleRefreshToken = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refreshToken;
+  const userId = req.user?.id;
+  if (!refreshToken) {
+    res
+      .status(401)
+      .json({ success: false, message: "No refresh token provided" });
+    return;
+  }
+  const user = await User.findById(userId).select("+refreshToken");
+  if (!user || user.refreshToken !== refreshToken) {
+    res.status(403).json({
+      success: false,
+      data: { message: "Invalid or expired refresh token" },
+    });
+    return;
+  }
+  const newAccessToken = user.generateToken();
+  res
+    .status(200)
+    .json({ success: true, data: { accessToken: newAccessToken } });
+});
 
 // RESEND OTP
 const resendOTP = asyncHandler(
@@ -443,6 +500,29 @@ const getMe = asyncHandler(
   },
 );
 
+// LOGOUT USER
+const logout = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken) {
+      await User.findOneAndUpdate(
+        { refreshToken },
+        { $unset: { refreshToken: 1 } },
+      );
+    }
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+    return;
+  },
+);
+
 export {
   register,
   login,
@@ -450,6 +530,8 @@ export {
   resetPassword,
   verifyEmailOTP,
   resendOTP,
+  handleRefreshToken,
+  logout,
   getMe,
   sendEmail,
   generateOtpEmailHtml,

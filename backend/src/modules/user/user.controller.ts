@@ -38,27 +38,6 @@ const getAllUsers = asyncHandler(
       query.provider = provider;
     }
 
-    // const users = await User.aggregate([
-    //   { $match: query },
-    //   {
-    //     $addFields: {
-    //       roleOrder: {
-    //         $switch: {
-    //           branches: [
-    //             { case: { eq: ["$role", "SuperAdmin"] }, then: 1 },
-    //             { case: { eq: ["$role", "Admin"] }, then: 2 },
-    //             { case: { eq: ["$role", "User"] }, then: 3 },
-    //           ],
-    //           default: 4,
-    //         },
-    //       },
-    //     },
-    //   },
-    //   { $sort: { roleOrder: 1, createdAt: -1 } },
-    //   { $skip: (pageNumber - 1) * userPerPage },
-    //   { $limit: userPerPage },
-    //   { $project: { roleOrder: 0, password: 0 } },
-    // ]);
     const users = await User.find(query)
       .skip((pageNumber - 1) * userPerPage)
       .limit(userPerPage)
@@ -206,7 +185,11 @@ const updateUser = asyncHandler(
       }
     }
 
-    if (user.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (
+      user.role === "SuperAdmin" &&
+      req.user?.id !== req.params.userId &&
+      req.user?.role !== "SuperAdmin"
+    ) {
       res.status(403).json({
         success: false,
         message: "Request failed",
@@ -263,7 +246,11 @@ const updateUser = asyncHandler(
 const deleteUser = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById(req.params.userId);
-    if (user?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (
+      user?.role === "SuperAdmin" &&
+      req.user?.id !== req.params.userId &&
+      req.user?.role !== "SuperAdmin"
+    ) {
       res.status(403).json({
         success: false,
         message: "Request failed",

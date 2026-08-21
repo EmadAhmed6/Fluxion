@@ -29,8 +29,11 @@ The API is deployed locally and can be accessed at:
 
 ### Authentication
 
-Protected routes require JSON Web Token (JWT) authentication. To authenticate, include the token in the HTTP `Authorization` header as a Bearer token:
-`Authorization: Bearer <your_jwt_token>`
+Protected routes require JSON Web Token (JWT) authentication using a dual-token strategy:
+- **Access Token**: Short-lived JWT (expires in 15 minutes) passed in the HTTP `Authorization` header as a Bearer token:
+  `Authorization: Bearer <your_jwt_token>`
+- **Refresh Token**: Long-lived JWT (expires in 7 days) stored securely in an `httpOnly`, `sameSite: strict` HTTP cookie named `refreshToken`.
+- **Token Refresh & Logout**: The `/auth/refresh-token` endpoint reads the `refreshToken` cookie and returns a new Access Token. The `/auth/logout` endpoint invalidates the refresh token in the database and clears the cookie.
 
 ---
 
@@ -45,15 +48,17 @@ Protected routes require JSON Web Token (JWT) authentication. To authenticate, i
 
 | #   | Method | Endpoint                                                          | Description                                                      | Auth |    Rate Limit    |
 | :-- | :----- | :---------------------------------------------------------------- | :--------------------------------------------------------------- | :--: | :--------------: |
-| 1   | POST   | `/auth/register`                                                  | Register a new user account with DB OTP                          |  ❌  |        —         |
-| 2   | POST   | `/auth/login`                                                     | Authenticate user (Email or Username) and retrieve JWT token     |  ❌  |  🔒 10 req/min   |
-| 3   | GET    | `/auth/github`                                                    | Initiate GitHub OAuth 2.0 Login authorization flow               |  ❌  |        —         |
-| 4   | GET    | `/auth/github/callback`                                           | GitHub OAuth 2.0 Callback, Passport auth & JWT redirect          |  ❌  |        —         |
-| 5   | POST   | `/auth/verify-otp`                                                | Verify user email using 6-digit DB OTP code                      |  ❌  |        —         |
-| 6   | POST   | `/auth/resend-otp`                                                | Resend 6-digit OTP code to unverified email                      |  ❌  |  🔒 10 req/min   |
-| 7   | POST   | `/auth/forgot-password`                                           | Send password reset link to user's email                         |  ❌  |  🔒 10 req/min   |
-| 8   | POST   | `/auth/reset-password/:userId/:token`                             | Validate reset token and update password                         |  ❌  |        —         |
-| 9   | GET    | `/auth/me`                                                        | Retrieve currently authenticated user profile                    |  🔒  |        —         |
+| 1   | POST   | `/auth/register`                                                  | Register a new user account (returns JWT & sets httpOnly cookie) |  ❌  |        —         |
+| 2   | POST   | `/auth/login`                                                     | Authenticate user (returns JWT & sets httpOnly cookie)           |  ❌  |  🔒 10 req/min   |
+| 3   | POST   | `/auth/refresh-token`                                             | Generate a new access token using httpOnly refreshToken cookie   |  🔒  |        —         |
+| 4   | POST   | `/auth/logout`                                                    | Clear httpOnly refreshToken cookie and invalidate refresh session|  ❌  |        —         |
+| 5   | GET    | `/auth/github`                                                    | Initiate GitHub OAuth 2.0 Login authorization flow               |  ❌  |        —         |
+| 6   | GET    | `/auth/github/callback`                                           | GitHub OAuth 2.0 Callback, Passport auth & JWT redirect          |  ❌  |        —         |
+| 7   | POST   | `/auth/verify-otp`                                                | Verify user email using 6-digit DB OTP code                      |  ❌  |        —         |
+| 8   | POST   | `/auth/resend-otp`                                                | Resend 6-digit OTP code to unverified email                      |  ❌  |  🔒 10 req/min   |
+| 9   | POST   | `/auth/forgot-password`                                           | Send password reset link to user's email                         |  ❌  |  🔒 10 req/min   |
+| 10  | POST   | `/auth/reset-password/:userId/:token`                             | Validate reset token and update password                         |  ❌  |        —         |
+| 11  | GET    | `/auth/me`                                                        | Retrieve currently authenticated user profile                    |  🔒  |        —         |
 | 10  | GET    | `/users`                                                          | Retrieve list of all users                                       |  🔒  | 🔒 100 req/15min |
 | 11  | GET    | `/users/:userId`                                                  | Retrieve detailed user profile                                   |  🔒  | 🔒 100 req/15min |
 | 12  | PUT    | `/users/:userId`                                                  | Update profile details, jobTitle, bio, avatar (OAuth restricted) |  🔒  | 🔒 100 req/15min |
@@ -195,6 +200,67 @@ Invalid credentials, or attempting local password login on account signed up via
 ```json
 {
   "message": "Invalid email or password"
+}
+```
+
+---
+
+### POST /auth/refresh-token
+
+Generate a new Access Token using the `refreshToken` stored in an `httpOnly` cookie.
+
+#### Headers & Cookies
+
+- Requires `refreshToken` HTTP-Only cookie.
+
+#### Responses
+
+##### Response 200
+
+Access token refreshed successfully.
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+##### Response 401 / 403
+
+No refresh token provided, or invalid/expired refresh token.
+
+```json
+{
+  "success": false,
+  "data": {
+    "message": "Invalid or expired refresh token"
+  }
+}
+```
+
+---
+
+### POST /auth/logout
+
+Logout user session by clearing the `refreshToken` HTTP-Only cookie and unsetting it in the database.
+
+#### Headers & Cookies
+
+- Accepts `refreshToken` HTTP-Only cookie.
+
+#### Responses
+
+##### Response 200
+
+User logged out successfully and httpOnly cookie cleared.
+
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
 }
 ```
 

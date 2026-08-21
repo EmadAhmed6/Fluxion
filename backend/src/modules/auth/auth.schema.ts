@@ -11,13 +11,11 @@ const passwordSchema = z
 const RegisterSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email().trim().min(4),
-  jobTitle: z.string().min(3).max(50).optional(),
   password: passwordSchema,
 });
 const AuthSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email().trim().min(4),
-  jobTitle: z.string().min(3).max(50).optional(),
   password: passwordSchema,
   confirmPassword: z.string(),
   otp: z.string().min(6, { message: "Otp Must be at least 6 digits" }),

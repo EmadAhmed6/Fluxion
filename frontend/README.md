@@ -102,6 +102,12 @@ Dedicated administrative routes guarded for `isAdmin` and `isSuperAdmin` users:
 - **Client-Side Zod Validation (`changePasswordSchema`)**: Form validated with real-time requirements checking: minimum 6 characters, maximum 72 characters, at least one uppercase letter (`A-Z`), one lowercase letter (`a-z`), one digit (`0-9`), and matching confirmation password field.
 - **Interactive UI**: Modal built with React Hook Form + Zod resolver (`ChangePasswordModal.tsx`), live requirement checkmarks, and custom toast notifications.
 
+---
+
+### 9. Automatic Token Refresh & Session Interceptors
+- **Axios Client Interceptor (`lib/axiosClient.ts`)**: Configured with `withCredentials: true` to send and receive secure `httpOnly` refresh cookies across domains.
+- **Background Token Refresh on 401 Unauthorized**: Intercepts expired Access Token errors automatically, calls `POST /auth/refresh-token` with credentials, retrieves a new Access Token, updates the `token` cookie (`Cookies.set("token", newAccessToken)`), and silently retries queued pending requests without user interruption.
+- **Server-Side Session Invalidation**: `useLogout` hook sends `POST /auth/logout` to clear the `httpOnly` cookie on the server before removing local client tokens and redirecting to `/auth/login`.
 
 ---
 

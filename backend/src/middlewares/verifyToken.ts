@@ -3,6 +3,7 @@ import { Post } from "../modules/posts/post.model.js";
 import { Comment } from "../modules/comment/comment.model.js";
 import type { Request, Response, NextFunction } from "express";
 import { Types } from "mongoose";
+import { decode } from "punycode";
 
 interface JWTUserPayload {
   id: string;
@@ -33,6 +34,34 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+const verifyRefreshToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const refreshToken = req.cookies?.refreshToken;
+  const secret = process.env.JWT_REFRESH_KEY;
+  if (typeof secret !== "string" || secret.length === 0) {
+    return res
+      .status(500)
+      .json({ message: "Refresh secret is not configured" });
+  }
+  if (!refreshToken) {
+    return res
+      .status(401)
+      .json({ message: "No refresh token was found in cookies" });
+  }
+  try {
+    const decoded = jwt.verify(refreshToken, secret) as { id: string };
+    req.user = { id: decoded.id, role: "User" };
+    next();
+  } catch (err) {
+    return res
+      .status(403)
+      .json({ message: "Invalid or expired refresh token" });
   }
 };
 
@@ -72,7 +101,7 @@ const verifyAdminToken = (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (req.user.role === "Admin") {
+    if (req.user.role === "Admin" || req.user.role === "SuperAdmin") {
       next();
     } else {
       return res
@@ -174,6 +203,7 @@ const verifyCommentOwner = (
 
 export {
   verifyToken,
+  verifyRefreshToken,
   verifyAuthorizedToken,
   verifyAdminToken,
   verifySuperAdminToken,

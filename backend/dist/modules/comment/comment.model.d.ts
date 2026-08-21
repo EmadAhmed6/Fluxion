@@ -1,24 +1,19 @@
 import mongoose, { Document, Types } from "mongoose";
-import { type IUpdateComment } from "./comment.schema.js";
-interface ICreateComment {
-    postId: string;
-    text: string;
-    image?: {
-        url: string;
-        publicId: string | null;
-    };
-}
+import { type IUpdateComment, type ICreateComment } from "./comment.schema.js";
 interface IComment extends Omit<ICreateComment, "postId">, Document {
     postId: Types.ObjectId;
     user: Types.ObjectId;
     likes: Types.ObjectId[];
+    replyLikesCount: number;
     commentsCount: Number;
     commentLikesCount: Number;
+    parentComment: string | null;
+    replyCommentsCount: number;
 }
 declare const validateCreateComment: (comment: ICreateComment) => import("zod").ZodSafeParseResult<{
     postId: string;
     text: string;
-    image?: {
+    commentImage?: {
         url: string;
         publicId: string | null;
     } | undefined;
@@ -26,7 +21,7 @@ declare const validateCreateComment: (comment: ICreateComment) => import("zod").
 declare const validateUpdateComment: (comment: IUpdateComment) => import("zod").ZodSafeParseResult<{
     postId?: string | undefined;
     text?: string | undefined;
-    image?: {
+    commentImage?: {
         url: string;
         publicId: string | null;
     } | undefined;

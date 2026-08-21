@@ -18,6 +18,8 @@ import {
 
 interface IUser extends Document, IUserSchema {
   generateToken: () => string;
+  refreshToken: string;
+  generateRefreshToken: () => string;
   isVerified: boolean;
   postsCount: number;
   role: "User" | "Admin" | "SuperAdmin";
@@ -92,6 +94,10 @@ const userSchema = new Schema<IUser>(
         publicId: null,
       },
     },
+    refreshToken: {
+      type: String,
+      select: false,
+    },
     isVerified: { type: Boolean, default: false },
     role: {
       type: String,
@@ -121,7 +127,16 @@ userSchema.methods.generateToken = function (this: IUser): string {
       username: this.username,
     },
     process.env.JWT_SECRET_KEY as string,
+    {
+      expiresIn: "15m",
+    },
   );
+};
+
+userSchema.methods.generateRefreshToken = function (this: IUser): string {
+  return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_KEY as string, {
+    expiresIn: "7d",
+  });
 };
 
 const validateRegisterUser = (user: IRegisterUser) => {

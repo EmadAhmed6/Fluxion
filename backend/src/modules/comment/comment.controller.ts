@@ -176,6 +176,7 @@ const updateComment = asyncHandler(
     const commentOwner = await User.findById(comment.user);
     if (
       commentOwner?.role === "SuperAdmin" &&
+      comment.user.toString() !== req.user?.id &&
       req.user?.role !== "SuperAdmin"
     ) {
       res.status(403).json({
@@ -247,6 +248,7 @@ const deleteComment = asyncHandler(
     const commentOwner = await User.findById(comment?.user);
     if (
       commentOwner?.role === "SuperAdmin" &&
+      comment?.user.toString() !== req.user?.id &&
       req.user?.role !== "SuperAdmin"
     ) {
       res.status(403).json({

@@ -23,10 +23,13 @@ Includes JSON Web Token (JWT) authentication, role-based authorization, rate lim
 
 ### 🔐 1. Authentication & Security
 
+- **Dual-Token Authentication Architecture**: Short-lived access token (15m) returned on login/register + 7-day refresh token stored in secure `httpOnly`, `sameSite: strict` cookie.
+- **Token Rotation & Refresh (`/auth/refresh-token`)**: Validates incoming `refreshToken` cookie against DB (`user.refreshToken`) and issues a new access token.
+- **Server-Side Session Invalidation (`/auth/logout`)**: Unsets refresh token from DB and clears the `httpOnly` cookie.
 - **OTP Registration & Email Verification**: Users register and receive a 6-digit OTP via email (`/auth/register`), verified against DB expiration (`/auth/verify-otp`).
-- **Rate-Limited Endpoints**: Login (`authLimiter`: 5 req/min) and API endpoints (`apiLimiter`: 100 req/15min).
+- **Rate-Limited Endpoints**: Login (`authLimiter`: 10 req/min) and API endpoints (`apiLimiter`: 100 req/15min).
 - **Password Reset Pipeline**: Forgot password (`/auth/forgot-password`) sends signed reset links via Nodemailer.
-- **Middlewares**: `verifyToken`, `verifyAuthorizedToken`, `verifyAdminToken`.
+- **Middlewares**: `verifyToken`, `verifyRefreshToken`, `verifyAuthorizedToken`, `verifyAdminToken`, `verifySuperAdminToken`.
 
 ### 📝 2. Posts & Atomic Image Management
 
@@ -115,6 +118,7 @@ Create a `.env` file in the `backend/` directory:
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/fluxion
 JWT_SECRET_KEY=your_secret_key
+JWT_REFRESH_KEY=your_refresh_secret_key
 FRONTEND_URL=http://localhost:3000
 
 # Cloudinary

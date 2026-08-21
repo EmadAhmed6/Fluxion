@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Post } from "../modules/posts/post.model.js";
 import { Comment } from "../modules/comment/comment.model.js";
+import { Types } from "mongoose";
 const verifyToken = (req, res, next) => {
     let token = req.headers.authorization;
     const secret = process.env.JWT_SECRET_KEY;
@@ -28,7 +29,14 @@ const verifyAuthorizedToken = (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
-        if (req.user.id === req.params.id || req.user.isAdmin) {
+        const userId = req.params.userId;
+        if (userId &&
+            (typeof userId !== "string" || !Types.ObjectId.isValid(userId))) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+        if (req.user.id === userId ||
+            req.user.role === "Admin" ||
+            req.user.role === "SuperAdmin") {
             next();
         }
         else {
@@ -41,7 +49,7 @@ const verifyAdminToken = (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
-        if (req.user.isAdmin) {
+        if (req.user.role === "Admin") {
             next();
         }
         else {
@@ -51,16 +59,41 @@ const verifyAdminToken = (req, res, next) => {
         }
     });
 };
+const verifySuperAdminToken = (req, res, next) => {
+    verifyToken(req, res, () => {
+        if (!req.user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        if (req.user.role === "SuperAdmin") {
+            next();
+        }
+        else {
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden",
+                data: { message: "Only super admin is allowed" },
+            });
+        }
+    });
+};
 const verifyPostOwner = (req, res, next) => {
     verifyToken(req, res, async () => {
         if (!req.user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
-        const post = await Post.findById(req.params.postId);
+        const postId = req.params.postId;
+        if (!postId ||
+            typeof postId !== "string" ||
+            !Types.ObjectId.isValid(postId)) {
+            return res.status(400).json({ message: "Invalid post ID" });
+        }
+        const post = await Post.findById(postId);
         if (!post) {
             return res.status(404).json({ message: "Post was not found" });
         }
-        if (post.user?.toString() === req.user.id || req.user.isAdmin) {
+        if (post.user?.toString() === req.user.id ||
+            req.user.role === "Admin" ||
+            req.user.role === "SuperAdmin") {
             next();
         }
         else {
@@ -73,12 +106,19 @@ const verifyCommentOwner = (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
-        const commentId = req.params.commentId;
+        const commentId = req.params.replyCommentId || req.params.commentId;
+        if (!commentId ||
+            typeof commentId !== "string" ||
+            !Types.ObjectId.isValid(commentId)) {
+            return res.status(400).json({ message: "Invalid comment ID" });
+        }
         const comment = await Comment.findById(commentId);
         if (!comment) {
             return res.status(404).json({ message: "Comment was not found" });
         }
-        if (comment.user.toString() === req.user.id || req.user.isAdmin) {
+        if (comment.user.toString() === req.user.id ||
+            req.user.role === "Admin" ||
+            req.user.role === "SuperAdmin") {
             next();
         }
         else {
@@ -86,5 +126,5 @@ const verifyCommentOwner = (req, res, next) => {
         }
     });
 };
-export { verifyToken, verifyAuthorizedToken, verifyAdminToken, verifyPostOwner, verifyCommentOwner, };
+export { verifyToken, verifyAuthorizedToken, verifyAdminToken, verifySuperAdminToken, verifyPostOwner, verifyCommentOwner, };
 //# sourceMappingURL=verifyToken.js.map
