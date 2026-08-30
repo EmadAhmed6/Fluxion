@@ -5,4 +5,5 @@ export * from "./useUploadProfilePicture";
 export * from "./useDeleteUser";
 export * from "./useToggleAdminStatus";
 export * from "./useChangePassword";
+export * from "./useDeleteProfileImage";
 

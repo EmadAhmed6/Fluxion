@@ -55,8 +55,8 @@ const verifyRefreshToken = (
       .json({ message: "No refresh token was found in cookies" });
   }
   try {
-    const decoded = jwt.verify(refreshToken, secret) as { id: string };
-    req.user = { id: decoded.id, role: "User" };
+    const decoded = jwt.verify(refreshToken, secret) as JWTUserPayload;
+    req.user = { id: decoded.id, role: decoded.role || "User" };
     next();
   } catch (err) {
     return res

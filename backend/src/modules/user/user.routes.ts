@@ -6,6 +6,7 @@ import {
   deleteUser,
   toggleAdminStatus,
   changePassword,
+  deleteProfileImage,
 } from "./user.controller.js";
 import {
   verifyToken,
@@ -24,6 +25,11 @@ router
   .get(verifyToken, getUserById)
   .put(verifyAuthorizedToken, upload.single("profilePicture"), updateUser)
   .delete(verifyAuthorizedToken, deleteUser);
+router.delete(
+  "/:userId/profile-image",
+  verifyAuthorizedToken,
+  deleteProfileImage,
+);
 
 router.post(
   "/:userId/change-password",

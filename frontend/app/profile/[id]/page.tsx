@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import Navbar from "@/_components/Navbar";
@@ -10,6 +10,7 @@ import EditProfileModal from "@/_components/EditProfileModal";
 import {
   useGetUserProfile,
   useUploadProfilePicture,
+  useDeleteProfileImage,
   useDeleteUser,
 } from "@/_features/user/hooks";
 import { useGetPosts } from "@/_features/posts/hooks";
@@ -28,6 +29,7 @@ import {
   Eye,
   Crown,
   KeyRound,
+  MoreVertical,
 } from "lucide-react";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
@@ -36,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/_components/Text";
 import { Post } from "@/_features/posts/types/Post";
 import { useLanguage } from "@/context/LanguageContext";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -60,6 +63,7 @@ export default function UserProfilePage() {
   });
 
   const uploadProfileMutation = useUploadProfilePicture(targetUserId);
+  const deleteProfileImageMutation = useDeleteProfileImage(targetUserId);
   const deleteUserMutation = useDeleteUser();
 
   const [mounted, setMounted] = useState(false);
@@ -67,14 +71,42 @@ export default function UserProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  const [isDeletePhotoModalOpen, setIsDeletePhotoModalOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
+        setIsAvatarMenuOpen(false);
+      }
+    }
+    if (isAvatarMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isAvatarMenuOpen]);
+
   const userToDisplay =
     profileUser || (isOwnProfile ? currentUser : null) || currentUser;
+
+  const handleDeleteProfilePicture = async () => {
+    try {
+      await deleteProfileImageMutation.mutateAsync();
+      setIsDeletePhotoModalOpen(false);
+    } catch {
+      // error handled in mutation toast
+    }
+  };
 
   const handleDeleteAccount = async () => {
     const deleteId = targetUserId || currentUser?._id;
@@ -188,28 +220,94 @@ export default function UserProfilePage() {
                   )}
                 </div>
 
-                {/* Edit Avatar Pen Button (Owner or Admin — but not admin on SuperAdmin profile) */}
+                {/* Avatar Action Buttons (Owner or Admin — but not admin on SuperAdmin profile) */}
                 {(isOwnProfile ||
                   currentUser?.role === "SuperAdmin" ||
                   (currentUser?.role === "Admin" && userToDisplay?.role !== "SuperAdmin")) && (
-                  <label
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute -bottom-1 ltr:-right-1 rtl:-left-1 p-2.5 rounded-2xl bg-primary hover:bg-primaryHover text-white shadow-lg border-2 border-bgSecondary transition-transform hover:scale-110 cursor-pointer z-20"
-                    title={t.profile.changePhoto}
-                  >
-                    {isUploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <div className="absolute -bottom-1 ltr:-right-1 rtl:-left-1 z-20" ref={avatarMenuRef}>
+                    {userToDisplay?.profilePicture?.url ? (
+                      // If there is a photo, show a "More" dropdown menu containing Edit & Delete
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAvatarMenuOpen((prev) => !prev);
+                          }}
+                          className="p-2.5 rounded-2xl bg-primary hover:bg-primaryHover text-white shadow-lg border-2 border-bgSecondary transition-transform hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                          title={isArabic ? "خيارات الصورة" : "Photo Options"}
+                        >
+                          <MoreVertical className="h-4 w-4 text-white" />
+                        </button>
+
+                        <AnimatePresence>
+                          {isAvatarMenuOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                              transition={{ duration: 0.15, ease: "easeOut" }}
+                              className={`absolute ${
+                                isArabic ? "left-0" : "right-0"
+                              } bottom-full mb-2 w-40 rounded-xl bg-bgSecondary border border-borderPrimary/60 shadow-2xl z-30 p-1.5 space-y-0.5`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {/* Edit / Change option */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsAvatarMenuOpen(false);
+                                  fileInputRef.current?.click();
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg text-textPrimary hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-start"
+                              >
+                                <Edit2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>{t.profile.changePhoto}</span>
+                              </button>
+
+                              {/* Delete option */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsAvatarMenuOpen(false);
+                                  setIsDeletePhotoModalOpen(true);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer text-start"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                                <span>{t.profile.deletePhoto}</span>
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     ) : (
-                      <Edit2 className="h-4 w-4 text-white" />
+                      // If there is no photo, show the regular edit / upload pen button directly
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2.5 rounded-2xl bg-primary hover:bg-primaryHover text-white shadow-lg border-2 border-bgSecondary transition-transform hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center block"
+                        title={t.profile.changePhoto}
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-white" />
+                        ) : (
+                          <Edit2 className="h-4 w-4 text-white" />
+                        )}
+                      </label>
                     )}
+
+                    {/* Hidden File Input used for uploading/updating the avatar */}
                     <input
                       type="file"
+                      ref={fileInputRef}
                       accept="image/*"
                       onChange={handleAvatarChange}
                       className="hidden"
-                      disabled={isUploading}
+                      disabled={isUploading || deleteProfileImageMutation.isPending}
                     />
-                  </label>
+                  </div>
                 )}
               </div>
 
@@ -442,6 +540,17 @@ export default function UserProfilePage() {
           targetUserId={targetUserId}
         />
       )}
+
+      {/* Delete Profile Picture Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeletePhotoModalOpen}
+        onClose={() => setIsDeletePhotoModalOpen(false)}
+        onConfirm={handleDeleteProfilePicture}
+        title={t.profile.deletePhoto}
+        description={t.profile.confirmDeletePhoto}
+        confirmText={t.profile.deletePhoto}
+        isPending={deleteProfileImageMutation.isPending}
+      />
 
       {/* Delete User Modal */}
       <DeleteConfirmModal

@@ -65,6 +65,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 13  | PATCH  | `/users/:userId/toggle-admin`                                     | Toggle user Admin role status (Super Admin Only)                 |  🔒  | 🔒 100 req/15min |
 | 14  | POST   | `/users/:userId/change-password`                                  | Change account password (Local Auth Owners Only)                 |  🔒  |  🔒 10 req/min   |
 | 15  | DELETE | `/users/:userId`                                                  | Delete user account from the database                            |  🔒  | 🔒 100 req/15min |
+| 15a | DELETE | `/users/:userId/profile-image`                                    | Delete user profile picture (Owner or Super Admin Only)          |  🔒  | 🔒 100 req/15min |
 | 14  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
 | 15  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
 | 16  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
@@ -913,6 +914,83 @@ User was not found in the system database.
 ```json
 {
   "message": "User was not found"
+}
+```
+
+---
+
+### DELETE /users/:userId/profile-image 🔒
+
+Delete/remove a user's profile picture from Cloudinary and the database. Restricted to the profile owner or Super Admins.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                              |
+| :-------- | :----- | :------: | :--------------------------------------- |
+| `userId`  | string |    ✅    | The ID of the user whose image to delete. |
+
+#### Responses
+
+##### Response 200
+
+Profile picture deleted successfully. Returns the updated user document.
+
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "username": "ahmed",
+    "email": "ahmed@example.com",
+    "role": "User",
+    "isVerified": true,
+    "postsCount": 3,
+    "profilePicture": {
+      "url": "",
+      "publicId": null
+    },
+    "createdAt": "2026-07-20T18:27:31.000Z",
+    "updatedAt": "2026-07-20T21:27:00.000Z"
+  }
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 403
+
+Forbidden. Insufficient permissions or attempting to modify the Super Admin (Owner) profile.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "You cannot delete profile picture"
+  }
+}
+```
+
+##### Response 404
+
+User target profile was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "User not found"
+  }
 }
 ```
 

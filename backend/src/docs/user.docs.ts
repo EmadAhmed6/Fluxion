@@ -4,6 +4,7 @@
 // PATCH  /users/{userId}/toggle-admin
 // POST   /users/{userId}/change-password
 // DELETE /users/{userId}
+// DELETE /users/{userId}/profile-image
 
 /**
  * @swagger
@@ -318,6 +319,49 @@
  *         description: Cannot delete Owner/Super Admin profile or insufficient permissions
  *       404:
  *         description: User was not found
+ */
+
+// DELETE /users/{userId}/profile-image
+/**
+ * @swagger
+ * /users/{userId}/profile-image:
+ *   delete:
+ *     summary: Delete user profile picture
+ *     description: Delete/remove a user's profile picture from Cloudinary and database. Restricted to profile owner or Super Admins.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: User ID
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: Profile picture deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request processed successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Insufficient permissions or cannot modify owner's profile
+ *       404:
+ *         description: User not found
  */
 
 /**

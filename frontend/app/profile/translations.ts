@@ -24,6 +24,8 @@ export interface ProfileTranslations {
   newPassword: string;
   confirmNewPassword: string;
   savePassword: string;
+  deletePhoto: string;
+  confirmDeletePhoto: string;
 }
 
 export const profileTranslations: Record<Language, ProfileTranslations> = {
@@ -37,6 +39,8 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     noPostsYet: "No posts published yet.",
     userPosts: "User Posts",
     changePhoto: "Change Photo",
+    deletePhoto: "Delete Photo",
+    confirmDeletePhoto: "Are you sure you want to delete this profile picture?",
     jobTitle: "Job Title",
     bio: "Bio",
     saveProfile: "Save Profile",
@@ -62,6 +66,8 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     noPostsYet: "لسه مانشرش أي بوستات.",
     userPosts: "بوستات المستخدم",
     changePhoto: "تغيير الصورة",
+    deletePhoto: "حذف الصورة",
+    confirmDeletePhoto: "هل أنت متأكد من حذف الصورة الشخصية؟",
     jobTitle: "المسمى الوظيفي",
     bio: "نبذة عنه",
     saveProfile: "حفظ البروفايل",

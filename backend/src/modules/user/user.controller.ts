@@ -8,6 +8,7 @@ import {
 } from "./user.model.js";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import { request } from "http";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
@@ -184,12 +185,10 @@ const updateUser = asyncHandler(
         return;
       }
     }
+    const isOwner = req.user?.id === req.params.userId;
+    const isSuperAdmin = req.user?.role === "SuperAdmin";
 
-    if (
-      user.role === "SuperAdmin" &&
-      req.user?.id !== req.params.userId &&
-      req.user?.role !== "SuperAdmin"
-    ) {
+    if (user.role === "SuperAdmin" && !isOwner && !isSuperAdmin) {
       res.status(403).json({
         success: false,
         message: "Request failed",
@@ -233,6 +232,53 @@ const updateUser = asyncHandler(
       .select("-password")
       .select("+email");
 
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: updatedUser,
+    });
+    return;
+  },
+);
+
+// Delete Profile Image
+const deleteProfileImage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "User not found" },
+      });
+      return;
+    }
+    const isOwner = req.user?.id === req.params.userId;
+    const isSuperAdmin = req.user?.role === "SuperAdmin";
+    if (!isOwner && !isSuperAdmin) {
+      res.status(403).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "You cannot delete profile picture" },
+      });
+      return;
+    }
+    if (user.role === "SuperAdmin" && !isOwner && !isSuperAdmin) {
+      res.status(403).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "You cannot modify Owner's profile" },
+      });
+      return;
+    }
+    if (user.profilePicture?.publicId) {
+      await cloudinary.uploader.destroy(user.profilePicture.publicId);
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.userId,
+      { $unset: { profilePicture: 1 } },
+      { returnDocument: "after", runValidators: true },
+    );
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
@@ -354,6 +400,7 @@ export {
   getUserById,
   updateUser,
   deleteUser,
+  deleteProfileImage,
   toggleAdminStatus,
   changePassword,
 };
