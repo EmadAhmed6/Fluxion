@@ -50,6 +50,12 @@ const toastTranslationsAr: Record<string, string> = {
   "Signed out successfully!": "تم تسجيل الخروج بنجاح!",
   "Logged out successfully!": "تم تسجيل الخروج بنجاح!",
 
+  // Follow operations
+  "Followed successfully": "تمت المتابعة بنجاح!",
+  "Unfollowed successfully": "تم إلغاء المتابعة بنجاح!",
+  "You cannot follow yourself": "لا يمكنك متابعة نفسك",
+  "Failed to update follow status": "فشل تحديث حالة المتابعة",
+
   // Auth operations
   "Signed in successfully! Welcome back.": "تم تسجيل الدخول بنجاح! أهلاً بيك تاني.",
   "Login successful but token missing from server response.": "تم الدخول بنجاح لكن مفيش توكن.",

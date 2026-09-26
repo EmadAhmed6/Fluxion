@@ -26,6 +26,17 @@ export interface ProfileTranslations {
   savePassword: string;
   deletePhoto: string;
   confirmDeletePhoto: string;
+  followers: string;
+  following: string;
+  follow: string;
+  unfollow: string;
+  followingStatus: string;
+  followersModalTitle: string;
+  followingModalTitle: string;
+  noFollowers: string;
+  noFollowing: string;
+  searchUsers: string;
+  noUsersFound: string;
 }
 
 export const profileTranslations: Record<Language, ProfileTranslations> = {
@@ -55,6 +66,17 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     newPassword: "New Password",
     confirmNewPassword: "Confirm New Password",
     savePassword: "Update Password",
+    followers: "Followers",
+    following: "Following",
+    follow: "Follow",
+    unfollow: "Unfollow",
+    followingStatus: "Following",
+    followersModalTitle: "Followers",
+    followingModalTitle: "Following",
+    noFollowers: "No followers yet.",
+    noFollowing: "Not following anyone yet.",
+    searchUsers: "Search users...",
+    noUsersFound: "No users found matching your search.",
   },
   ar: {
     userProfile: "الملف الشخصي",
@@ -82,6 +104,17 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     newPassword: "كلمة المرور الجديدة",
     confirmNewPassword: "تأكيد كلمة المرور الجديدة",
     savePassword: "حفظ كلمة المرور",
+    followers: "المتابعون",
+    following: "يتابع",
+    follow: "متابعة",
+    unfollow: "إلغاء المتابعة",
+    followingStatus: "تتابعه",
+    followersModalTitle: "المتابعون",
+    followingModalTitle: "قائمة المتابَعين",
+    noFollowers: "لا يوجد متابعون حتى الآن.",
+    noFollowing: "لا يتابع أي شخص حتى الآن.",
+    searchUsers: "البحث في القائمة...",
+    noUsersFound: "لم يتم العثور على أي مستخدم مطابق.",
   },
 };
 

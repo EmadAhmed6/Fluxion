@@ -65,24 +65,27 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 13  | PATCH  | `/users/:userId/toggle-admin`                                     | Toggle user Admin role status (Super Admin Only)                 |  🔒  | 🔒 100 req/15min |
 | 14  | POST   | `/users/:userId/change-password`                                  | Change account password (Local Auth Owners Only)                 |  🔒  |  🔒 10 req/min   |
 | 15  | DELETE | `/users/:userId`                                                  | Delete user account from the database                            |  🔒  | 🔒 100 req/15min |
-| 15a | DELETE | `/users/:userId/profile-image`                                    | Delete user profile picture (Owner or Super Admin Only)          |  🔒  | 🔒 100 req/15min |
-| 14  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
-| 15  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
-| 16  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
-| 17  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
-| 18  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
-| 19  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
-| 20  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
-| 21  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
-| 22  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
-| 23  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
-| 24  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
-| 25  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
-| 26  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
-| 27  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
-| 28  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
-| 29  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
-| 30  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
+| 16  | DELETE | `/users/:userId/profile-image`                                    | Delete user profile picture (Owner or Super Admin Only)          |  🔒  | 🔒 100 req/15min |
+| 17  | PUT    | `/users/:userId/follow`                                           | Toggle follow/unfollow a user                                    |  🔒  | 🔒 100 req/15min |
+| 18  | GET    | `/users/:userId/followers`                                        | Retrieve the list of followers for a user                        |  🔒  | 🔒 100 req/15min |
+| 19  | GET    | `/users/:userId/following`                                        | Retrieve the list of users a user is following                   |  🔒  | 🔒 100 req/15min |
+| 20  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
+| 21  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
+| 22  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
+| 23  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
+| 24  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
+| 25  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
+| 26  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
+| 27  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
+| 28  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
+| 29  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
+| 30  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
+| 31  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
+| 32  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
+| 33  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
+| 34  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
+| 35  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
+| 36  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
 
 ---
 
@@ -90,6 +93,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 
 - [Authentication Endpoints](#authentication-endpoints)
 - [User Management Endpoints](#user-management-endpoints)
+  - [Follow Feature](#follow-feature)
 - [Post Management Endpoints](#post-management-endpoints)
 - [Comment Management Endpoints](#comment-management-endpoints)
 - [Common HTTP Status Codes](#common-http-status-codes)
@@ -991,6 +995,193 @@ User target profile was not found.
   "data": {
     "message": "User not found"
   }
+}
+```
+
+---
+
+## Follow Feature
+
+### PUT /users/:userId/follow 🔒
+
+Toggle follow or unfollow another user. If the authenticated user is already following the target, the action will **unfollow** them; otherwise, it will **follow** them. A user cannot follow themselves.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                                  |
+| :-------- | :----- | :------: | :------------------------------------------- |
+| `userId`  | string |    ✅    | The ID of the user to follow or unfollow.    |
+
+#### Responses
+
+##### Response 200
+
+Follow status toggled successfully.
+
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "message": "Followed successfully",
+    "isFollowing": true
+  }
+}
+```
+
+> **Unfollow response** — when the user was already following the target:
+> ```json
+> {
+>   "success": true,
+>   "message": "Request processed successfully",
+>   "data": {
+>     "message": "Unfollowed successfully",
+>     "isFollowing": false
+>   }
+> }
+> ```
+
+##### Response 400
+
+User attempted to follow themselves.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "You cannot follow yourself"
+  }
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+Target user was not found.
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+---
+
+### GET /users/:userId/followers 🔒
+
+Retrieve the list of users who follow the specified user.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                                          |
+| :-------- | :----- | :------: | :--------------------------------------------------- |
+| `userId`  | string |    ✅    | The ID of the user whose followers list to retrieve. |
+
+#### Responses
+
+##### Response 200
+
+Followers list retrieved successfully. Returns an array of user objects with basic profile info.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012345",
+      "fullName": "Ahmed Mohamed",
+      "username": "ahmed",
+      "profilePicture": {
+        "url": "https://res.cloudinary.com/example/image/upload/profile.jpg",
+        "publicId": "profile_picture_123"
+      }
+    }
+  ]
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+User was not found.
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+---
+
+### GET /users/:userId/following 🔒
+
+Retrieve the list of users that the specified user is following.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                                           |
+| :-------- | :----- | :------: | :---------------------------------------------------- |
+| `userId`  | string |    ✅    | The ID of the user whose following list to retrieve.  |
+
+#### Responses
+
+##### Response 200
+
+Following list retrieved successfully. Returns an array of user objects with basic profile info.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012345",
+      "fullName": "Ahmed Mohamed",
+      "username": "ahmed",
+      "profilePicture": {
+        "url": "https://res.cloudinary.com/example/image/upload/profile.jpg",
+        "publicId": "profile_picture_123"
+      }
+    }
+  ]
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+User was not found.
+
+```json
+{
+  "message": "User not found"
 }
 ```
 

@@ -23,6 +23,8 @@ export interface AuthMe {
   };
   role: "User" | "Admin" | "SuperAdmin";
   provider?: "local" | "google" | "github";
+  followers?: string[];
+  following?: string[];
   createdAt: string;
   updatedAt: string;
 }

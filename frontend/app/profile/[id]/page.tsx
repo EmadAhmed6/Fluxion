@@ -12,6 +12,7 @@ import {
   useUploadProfilePicture,
   useDeleteProfileImage,
   useDeleteUser,
+  useToggleFollowUser,
 } from "@/_features/user/hooks";
 import { useGetPosts } from "@/_features/posts/hooks";
 import { useGetAuthMeQuery } from "@/_features/auth/hooks";
@@ -30,10 +31,15 @@ import {
   Crown,
   KeyRound,
   MoreVertical,
+  Users,
+  UserCheck,
+  UserPlus,
+  X,
 } from "lucide-react";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
 import ChangePasswordModal from "@/_components/ChangePasswordModal";
+import FollowersModal, { FollowModalTab } from "@/_components/FollowersModal";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/_components/Text";
 import { Post } from "@/_features/posts/types/Post";
@@ -65,15 +71,21 @@ export default function UserProfilePage() {
   const uploadProfileMutation = useUploadProfilePicture(targetUserId);
   const deleteProfileImageMutation = useDeleteProfileImage(targetUserId);
   const deleteUserMutation = useDeleteUser();
+  const toggleFollowMutation = useToggleFollowUser(targetUserId);
 
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
+    useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
   const [isDeletePhotoModalOpen, setIsDeletePhotoModalOpen] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followModalTab, setFollowModalTab] =
+    useState<FollowModalTab>("followers");
+  const [isFollowHovered, setIsFollowHovered] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
@@ -84,7 +96,10 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
+      if (
+        avatarMenuRef.current &&
+        !avatarMenuRef.current.contains(event.target as Node)
+      ) {
         setIsAvatarMenuOpen(false);
       }
     }
@@ -98,6 +113,77 @@ export default function UserProfilePage() {
 
   const userToDisplay =
     profileUser || (isOwnProfile ? currentUser : null) || currentUser;
+
+  // Optimistic follow state and count deltas for instant real-time UI updates
+  const [isFollowingOptimistic, setIsFollowingOptimistic] = useState<
+    boolean | null
+  >(null);
+  const [followersCountDelta, setFollowersCountDelta] = useState<number>(0);
+  const [followingCountDelta, setFollowingCountDelta] = useState<number>(0);
+
+  // Sync / reset optimistic state when viewing another user or when profileUser changes
+  useEffect(() => {
+    setIsFollowingOptimistic(null);
+    setFollowersCountDelta(0);
+    setFollowingCountDelta(0);
+  }, [targetUserId, profileUser?._id]);
+
+  const baseFollowersCount = (userToDisplay as any)?.followers?.length || 0;
+  const baseFollowingCount = (userToDisplay as any)?.following?.length || 0;
+
+  const followersCount = Math.max(0, baseFollowersCount + followersCountDelta);
+  const followingCount = Math.max(0, baseFollowingCount + followingCountDelta);
+
+  const baseIsFollowing = Boolean(
+    currentUser &&
+    targetUserId &&
+    !isOwnProfile &&
+    ((userToDisplay as any)?.followers?.some(
+      (f: any) =>
+        String(typeof f === "string" ? f : f?._id || f?.id) ===
+        String(currentUser._id),
+    ) ||
+      (currentUser as any)?.following?.some(
+        (f: any) =>
+          String(typeof f === "string" ? f : f?._id || f?.id) ===
+          String(targetUserId),
+      )),
+  );
+
+  const isFollowing =
+    isFollowingOptimistic !== null ? isFollowingOptimistic : baseIsFollowing;
+
+  const handleOpenFollowModal = (tab: FollowModalTab) => {
+    setFollowModalTab(tab);
+    setIsFollowersModalOpen(true);
+  };
+
+  const handleToggleFollow = async () => {
+    if (!currentUser) {
+      router.push("/auth/login");
+      return;
+    }
+    if (toggleFollowMutation.isPending) return;
+
+    const willFollow = !isFollowing;
+
+    // 1. Instantly update UI in 0 milliseconds
+    setIsFollowingOptimistic(willFollow);
+    setFollowersCountDelta((prev) => prev + (willFollow ? 1 : -1));
+
+    // 2. Perform server mutation
+    toggleFollowMutation.mutate(targetUserId, {
+      onError: () => {
+        // Rollback optimistic update on failure
+        setIsFollowingOptimistic(null);
+        setFollowersCountDelta(0);
+      },
+      onSettled: () => {
+        setIsFollowingOptimistic(null);
+        setFollowersCountDelta(0);
+      },
+    });
+  };
 
   const handleDeleteProfilePicture = async () => {
     try {
@@ -134,6 +220,7 @@ export default function UserProfilePage() {
         await uploadProfileMutation.mutateAsync(file);
       } finally {
         setIsUploading(false);
+        e.target.value = ""; // Reset file input value to allow re-upload of the same file
       }
     }
   };
@@ -142,7 +229,9 @@ export default function UserProfilePage() {
     setIsEditModalOpen(true);
   };
 
-  const fetchedUserPosts = Array.isArray(userPosts) ? userPosts : userPosts?.posts || [];
+  const fetchedUserPosts = Array.isArray(userPosts)
+    ? userPosts
+    : userPosts?.posts || [];
   const rawPosts: any[] =
     fetchedUserPosts.length > 0
       ? fetchedUserPosts
@@ -223,8 +312,12 @@ export default function UserProfilePage() {
                 {/* Avatar Action Buttons (Owner or Admin — but not admin on SuperAdmin profile) */}
                 {(isOwnProfile ||
                   currentUser?.role === "SuperAdmin" ||
-                  (currentUser?.role === "Admin" && userToDisplay?.role !== "SuperAdmin")) && (
-                  <div className="absolute -bottom-1 ltr:-right-1 rtl:-left-1 z-20" ref={avatarMenuRef}>
+                  (currentUser?.role === "Admin" &&
+                    userToDisplay?.role !== "SuperAdmin")) && (
+                  <div
+                    className="absolute -bottom-1 ltr:-right-1 rtl:-left-1 z-20"
+                    ref={avatarMenuRef}
+                  >
                     {userToDisplay?.profilePicture?.url ? (
                       // If there is a photo, show a "More" dropdown menu containing Edit & Delete
                       <div className="relative">
@@ -285,9 +378,13 @@ export default function UserProfilePage() {
                       </div>
                     ) : (
                       // If there is no photo, show the regular edit / upload pen button directly
-                      <label
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-2.5 rounded-2xl bg-primary hover:bg-primaryHover text-white shadow-lg border-2 border-bgSecondary transition-transform hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center block"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="p-2.5 rounded-2xl bg-primary hover:bg-primaryHover text-white shadow-lg border-2 border-bgSecondary transition-transform hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
                         title={t.profile.changePhoto}
                       >
                         {isUploading ? (
@@ -295,7 +392,7 @@ export default function UserProfilePage() {
                         ) : (
                           <Edit2 className="h-4 w-4 text-white" />
                         )}
-                      </label>
+                      </button>
                     )}
 
                     {/* Hidden File Input used for uploading/updating the avatar */}
@@ -305,7 +402,9 @@ export default function UserProfilePage() {
                       accept="image/*"
                       onChange={handleAvatarChange}
                       className="hidden"
-                      disabled={isUploading || deleteProfileImageMutation.isPending}
+                      disabled={
+                        isUploading || deleteProfileImageMutation.isPending
+                      }
                     />
                   </div>
                 )}
@@ -382,11 +481,52 @@ export default function UserProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
+                    {/* Follow / Unfollow Button for other users */}
+                    {!isOwnProfile && targetUserId && (
+                      <Button
+                        onClick={handleToggleFollow}
+                        variant={isFollowing ? "outline" : "default"}
+                        size="sm"
+                        disabled={toggleFollowMutation.isPending}
+                        onMouseEnter={() => setIsFollowHovered(true)}
+                        onMouseLeave={() => setIsFollowHovered(false)}
+                        className={`group/followBtn rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-md ${
+                          isFollowing
+                            ? isFollowHovered
+                              ? "border-rose-500/50 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white"
+                              : "border-primary/40 bg-primary/10 text-primary hover:border-primary"
+                            : "bg-primary hover:bg-primaryHover text-white shadow-primary/25"
+                        }`}
+                      >
+                        {toggleFollowMutation.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : isFollowing ? (
+                          isFollowHovered ? (
+                            <>
+                              <X className="h-3.5 w-3.5" />
+                              <span>{t.profile.unfollow}</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="h-3.5 w-3.5 text-primary" />
+                              <span>{t.profile.followingStatus}</span>
+                            </>
+                          )
+                        ) : (
+                          <>
+                            <UserPlus className="h-3.5 w-3.5" />
+                            <span>{t.profile.follow}</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+
                     {/* Edit Profile — hidden from admins on SuperAdmin profiles */}
                     {(isOwnProfile ||
                       currentUser?.role === "SuperAdmin" ||
-                      (currentUser?.role === "Admin" && userToDisplay?.role !== "SuperAdmin")) && (
+                      (currentUser?.role === "Admin" &&
+                        userToDisplay?.role !== "SuperAdmin")) && (
                       <Button
                         onClick={handleOpenEditModal}
                         variant="outline"
@@ -407,30 +547,33 @@ export default function UserProfilePage() {
                     )}
 
                     {/* Change Password — strictly visible ONLY to local account owner */}
-                    {isOwnProfile && (!userToDisplay?.provider || userToDisplay?.provider === "local") && (
-                      <Button
-                        onClick={() => setIsChangePasswordModalOpen(true)}
-                        variant="outline"
-                        size="sm"
-                        className="group/pwdBtn rounded-xl border border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 text-xs flex items-center gap-1.5 cursor-pointer hover:shadow-md hover:scale-105 active:scale-95"
-                      >
-                        <KeyRound className="h-3.5 w-3.5 text-textPrimary group-hover/pwdBtn:text-primary transition-colors" />
-                        <Text
-                          as="span"
-                          size="xs"
-                          font="semiBold"
-                          color="primary"
-                          className="group-hover/pwdBtn:text-primary transition-colors"
+                    {isOwnProfile &&
+                      (!userToDisplay?.provider ||
+                        userToDisplay?.provider === "local") && (
+                        <Button
+                          onClick={() => setIsChangePasswordModalOpen(true)}
+                          variant="outline"
+                          size="sm"
+                          className="group/pwdBtn rounded-xl border border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 text-xs flex items-center gap-1.5 cursor-pointer hover:shadow-md hover:scale-105 active:scale-95"
                         >
-                          {t.profile.changePassword}
-                        </Text>
-                      </Button>
-                    )}
+                          <KeyRound className="h-3.5 w-3.5 text-textPrimary group-hover/pwdBtn:text-primary transition-colors" />
+                          <Text
+                            as="span"
+                            size="xs"
+                            font="semiBold"
+                            color="primary"
+                            className="group-hover/pwdBtn:text-primary transition-colors"
+                          >
+                            {t.profile.changePassword}
+                          </Text>
+                        </Button>
+                      )}
 
                     {/* Delete User — hidden from admins on SuperAdmin profiles */}
                     {(isOwnProfile ||
                       currentUser?.role === "SuperAdmin" ||
-                      (currentUser?.role === "Admin" && userToDisplay?.role !== "SuperAdmin")) && (
+                      (currentUser?.role === "Admin" &&
+                        userToDisplay?.role !== "SuperAdmin")) && (
                       <Button
                         onClick={() => setIsDeleteUserModalOpen(true)}
                         variant="destructive"
@@ -458,6 +601,50 @@ export default function UserProfilePage() {
 
                 {/* Stats & Details Pills */}
                 <div className="flex flex-wrap items-center justify-center ltr:md:justify-start rtl:md:justify-end gap-3 pt-2">
+                  {/* Following Pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFollowModal("following")}
+                    className="group/stat flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-bgPrimary/80 hover:bg-primary/10 border border-borderPrimary/40 hover:border-primary/40 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                    title={isArabic ? "عرض قائمة المتابَعين" : "View following"}
+                  >
+                    <UserCheck className="h-4 w-4 text-primary group-hover/stat:scale-110 transition-transform" />
+                    <span className="font-extrabold text-xs text-textPrimary group-hover/stat:text-primary transition-colors">
+                      {followingCount}
+                    </span>
+                    <Text
+                      as="span"
+                      size="xs"
+                      font="semiBold"
+                      color="secondary"
+                      className="group-hover/stat:text-primary transition-colors"
+                    >
+                      {t.profile.following}
+                    </Text>
+                  </button>
+
+                  {/* Followers Pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFollowModal("followers")}
+                    className="group/stat flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-bgPrimary/80 hover:bg-primary/10 border border-borderPrimary/40 hover:border-primary/40 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                    title={isArabic ? "عرض المتابعين" : "View followers"}
+                  >
+                    <Users className="h-4 w-4 text-primary group-hover/stat:scale-110 transition-transform" />
+                    <span className="font-extrabold text-xs text-textPrimary group-hover/stat:text-primary transition-colors">
+                      {followersCount}
+                    </span>
+                    <Text
+                      as="span"
+                      size="xs"
+                      font="semiBold"
+                      color="secondary"
+                      className="group-hover/stat:text-primary transition-colors"
+                    >
+                      {t.profile.followers}
+                    </Text>
+                  </button>
+
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bgPrimary/80 border border-borderPrimary/40">
                     <FileText className="h-4 w-4 text-primary" />
                     <Text as="span" size="xs" font="semiBold" color="primary">
@@ -533,13 +720,14 @@ export default function UserProfilePage() {
       />
 
       {/* Change Password Modal (Owner Only, Local Auth Only) */}
-      {isOwnProfile && (!userToDisplay?.provider || userToDisplay?.provider === "local") && (
-        <ChangePasswordModal
-          isOpen={isChangePasswordModalOpen}
-          onClose={() => setIsChangePasswordModalOpen(false)}
-          targetUserId={targetUserId}
-        />
-      )}
+      {isOwnProfile &&
+        (!userToDisplay?.provider || userToDisplay?.provider === "local") && (
+          <ChangePasswordModal
+            isOpen={isChangePasswordModalOpen}
+            onClose={() => setIsChangePasswordModalOpen(false)}
+            targetUserId={targetUserId}
+          />
+        )}
 
       {/* Delete Profile Picture Modal */}
       <DeleteConfirmModal
@@ -589,6 +777,22 @@ export default function UserProfilePage() {
           src={previewImage}
           alt={userToDisplay?.fullName || userToDisplay?.username}
           onClose={() => setPreviewImage(null)}
+        />
+      )}
+
+      {/* Followers & Following Modal */}
+      {targetUserId && (
+        <FollowersModal
+          isOpen={isFollowersModalOpen}
+          onClose={() => setIsFollowersModalOpen(false)}
+          userId={targetUserId}
+          initialTab={followModalTab}
+          userName={userToDisplay?.fullName || userToDisplay?.username}
+          onFollowingRemoved={() => {
+            if (isOwnProfile) {
+              setFollowingCountDelta((prev) => prev - 1);
+            }
+          }}
         />
       )}
     </div>

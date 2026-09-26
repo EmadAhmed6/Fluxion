@@ -252,6 +252,7 @@ const deletePost = asyncHandler(
 );
 
 // LIKE / UNLIKE POST
+
 const likePost = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { postId } = req.params;

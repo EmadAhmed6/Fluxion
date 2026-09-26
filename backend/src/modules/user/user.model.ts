@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { Document, Schema, model } from "mongoose";
+import { Document, Schema, model, Types } from "mongoose";
 import {
   ChangePasswordSchema,
   ForgotPasswordSchema,
@@ -24,6 +24,8 @@ interface IUser extends Document, IUserSchema {
   postsCount: number;
   role: "User" | "Admin" | "SuperAdmin";
   provider: "local" | "google" | "github";
+  following: Types.ObjectId[];
+  followers: Types.ObjectId[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -53,6 +55,11 @@ const userSchema = new Schema<IUser>(
         return this.provider === "local";
       },
       minLength: 6,
+    },
+    role: {
+      type: String,
+      enum: ["User", "Admin", "SuperAdmin"],
+      default: "User",
     },
     provider: {
       type: String,
@@ -99,11 +106,18 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
     isVerified: { type: Boolean, default: false },
-    role: {
-      type: String,
-      enum: ["User", "Admin", "SuperAdmin"],
-      default: "User",
-    },
+    following: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    followers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,

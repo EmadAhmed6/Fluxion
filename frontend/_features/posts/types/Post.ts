@@ -13,6 +13,8 @@ export interface UserProfile {
     publicId?: string;
   };
   bio?: string;
+  followers?: string[] | any[];
+  following?: string[] | any[];
   createdAt?: string;
   updatedAt?: string;
 }

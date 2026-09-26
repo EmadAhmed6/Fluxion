@@ -8,7 +8,6 @@ import {
 } from "./user.model.js";
 import fs from "fs";
 import bcrypt from "bcryptjs";
-import { request } from "http";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
@@ -263,7 +262,7 @@ const deleteProfileImage = asyncHandler(
       });
       return;
     }
-    if (user.role === "SuperAdmin" && !isOwner && !isSuperAdmin) {
+    if (!isOwner && !isSuperAdmin) {
       res.status(403).json({
         success: false,
         message: "Request failed",
@@ -395,6 +394,125 @@ const toggleAdminStatus = asyncHandler(
   },
 );
 
+const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
+  const currentUserId = req.user?.id as string;
+  const targetUserId = req.params.userId as string;
+
+  if (currentUserId === targetUserId) {
+    res.status(400).json({
+      success: false,
+      message: "Request failed",
+      data: { message: "You cannot follow yourself" },
+    });
+    return;
+  }
+
+  const targetUser = await User.findById(targetUserId);
+  if (!targetUser) {
+    res.status(404).json({
+      success: false,
+      message: "Request failed",
+      data: { message: "User was not found" },
+    });
+    return;
+  }
+
+  const currentUser = await User.findById(currentUserId);
+  if (!currentUser) {
+    res.status(404).json({
+      success: false,
+      message: "Request failed",
+      data: { message: "User not found" },
+    });
+    return;
+  }
+  const isFollowing =
+    currentUser.following?.some((id) => id.toString() === targetUserId) ||
+    false;
+
+  if (isFollowing) {
+    await User.findByIdAndUpdate(currentUserId, {
+      $pull: { following: targetUserId },
+    });
+    await User.findByIdAndUpdate(targetUserId, {
+      $pull: { followers: currentUserId },
+    });
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: { message: "Unfollowed successfully" },
+    });
+    return;
+  } else {
+    await User.findByIdAndUpdate(currentUserId, {
+      $addToSet: { following: targetUserId },
+    });
+    await User.findByIdAndUpdate(targetUserId, {
+      $addToSet: { followers: currentUserId },
+    });
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: { message: "Followed successfully" },
+    });
+    return;
+  }
+});
+
+const getUserFollowers = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.params.userId as string;
+    const user = await User.findById(userId).populate({
+      path: "followers",
+      select: "fullName username profilePicture",
+    });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "User not found" },
+      });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: {
+        followersCount: user.followers?.length || 0,
+        followers: user.followers || [],
+      },
+    });
+    return;
+  },
+);
+
+const getUserFollowing = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.params.userId as string;
+    const user = await User.findById(userId).populate({
+      path: "following",
+      select: "fullName username profilePicture ",
+    });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "User not found" },
+      });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: {
+        followingCount: user.following?.length || 0,
+        following: user.following || [],
+      },
+    });
+    return;
+  },
+);
+
 export {
   getAllUsers,
   getUserById,
@@ -403,4 +521,7 @@ export {
   deleteProfileImage,
   toggleAdminStatus,
   changePassword,
+  toggleFollowUser,
+  getUserFollowers,
+  getUserFollowing,
 };

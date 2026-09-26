@@ -364,6 +364,176 @@
  *         description: User not found
  */
 
+// PUT  /users/{userId}/follow
+/**
+ * @swagger
+ * /users/{userId}/follow:
+ *   put:
+ *     summary: Toggle follow/unfollow a user
+ *     description: Follow or unfollow another user. If the authenticated user is already following the target, it will unfollow; otherwise it will follow. A user cannot follow themselves.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user to follow/unfollow
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: Follow status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request processed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: Followed successfully
+ *                     isFollowing:
+ *                       type: boolean
+ *                       example: true
+ *       400:
+ *         description: User cannot follow themselves
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: Target user not found
+ */
+
+// GET  /users/{userId}/followers
+/**
+ * @swagger
+ * /users/{userId}/followers:
+ *   get:
+ *     summary: Get a user's followers list
+ *     description: Retrieve the list of users who follow the specified user. Each entry includes basic profile information.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose followers to retrieve
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: Followers list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: 65f1a2b3c4d5e6f789012345
+ *                       fullName:
+ *                         type: string
+ *                         example: Ahmed Mohamed
+ *                       username:
+ *                         type: string
+ *                         example: ahmed
+ *                       profilePicture:
+ *                         type: object
+ *                         properties:
+ *                           url:
+ *                             type: string
+ *                             example: https://res.cloudinary.com/example/image/upload/profile.jpg
+ *                           publicId:
+ *                             type: string
+ *                             nullable: true
+ *                             example: profile_picture_123
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
+ */
+
+// GET  /users/{userId}/following
+/**
+ * @swagger
+ * /users/{userId}/following:
+ *   get:
+ *     summary: Get a user's following list
+ *     description: Retrieve the list of users that the specified user is following. Each entry includes basic profile information.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose following list to retrieve
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: Following list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: 65f1a2b3c4d5e6f789012345
+ *                       fullName:
+ *                         type: string
+ *                         example: Ahmed Mohamed
+ *                       username:
+ *                         type: string
+ *                         example: ahmed
+ *                       profilePicture:
+ *                         type: object
+ *                         properties:
+ *                           url:
+ *                             type: string
+ *                             example: https://res.cloudinary.com/example/image/upload/profile.jpg
+ *                           publicId:
+ *                             type: string
+ *                             nullable: true
+ *                             example: profile_picture_123
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
+ */
+
 /**
  * @swagger
  * components:
