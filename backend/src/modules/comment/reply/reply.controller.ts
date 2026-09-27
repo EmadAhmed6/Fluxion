@@ -10,6 +10,7 @@ import {
 import cloudinary from "../../../utils/cloudinary.js";
 import { Post } from "../../posts/post.model.js";
 import { User } from "../../user/user.model.js";
+import Notification from "../../notifications/notifications.model.js";
 
 // GET ALL REPLIES
 const getAllReplies = asyncHandler(
@@ -144,6 +145,16 @@ const replyComment = asyncHandler(
       "user",
       ["_id", "username", "fullName", "profilePicture", "jobTitle", "bio"],
     );
+    const currentUserId = req.user?.id as string;
+
+    if (comment.user.toString() !== currentUserId) {
+      await Notification.create({
+        recipient: comment.user,
+        sender: new Types.ObjectId(currentUserId),
+        type: "reply",
+        post: new Types.ObjectId(postId),
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -377,6 +388,26 @@ const likeReply = asyncHandler(async (req: Request, res: Response) => {
       "jobTitle",
       "bio",
     ]);
+
+  const currentUserId = req.user?.id as string;
+  if (!isLiked && replyComment.user.toString() !== currentUserId) {
+    await Notification.create({
+      recipient: replyComment.user,
+      sender: new Types.ObjectId(currentUserId),
+      type: "like_reply",
+      post: new Types.ObjectId(postId),
+      comment: new Types.ObjectId(commentId),
+    });
+  } else if (isLiked) {
+    await Notification.findOneAndDelete({
+      recipient: replyComment.user,
+      sender: new Types.ObjectId(currentUserId),
+      type: "like_reply",
+      post: new Types.ObjectId(postId),
+      comment: new Types.ObjectId(commentId),
+    });
+  }
+
 
   res.status(200).json({
     success: true,

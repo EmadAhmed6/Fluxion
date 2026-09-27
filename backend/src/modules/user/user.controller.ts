@@ -8,6 +8,7 @@ import {
 } from "./user.model.js";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import Notification from "../notifications/notifications.model.js";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
@@ -316,6 +317,7 @@ const deleteUser = asyncHandler(
   },
 );
 
+// CHANGE USER PASSWORD
 const changePassword = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById(req.params.userId as string);
@@ -370,6 +372,7 @@ const changePassword = asyncHandler(
   },
 );
 
+// TOGGLE USER ADMIN
 const toggleAdminStatus = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = await User.findById(req.params.userId);
@@ -394,10 +397,10 @@ const toggleAdminStatus = asyncHandler(
   },
 );
 
+// FOLLOW USER
 const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
   const currentUserId = req.user?.id as string;
   const targetUserId = req.params.userId as string;
-
   if (currentUserId === targetUserId) {
     res.status(400).json({
       success: false,
@@ -406,7 +409,6 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     });
     return;
   }
-
   const targetUser = await User.findById(targetUserId);
   if (!targetUser) {
     res.status(404).json({
@@ -416,7 +418,6 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     });
     return;
   }
-
   const currentUser = await User.findById(currentUserId);
   if (!currentUser) {
     res.status(404).json({
@@ -426,16 +427,23 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     });
     return;
   }
+
   const isFollowing =
     currentUser.following?.some((id) => id.toString() === targetUserId) ||
     false;
-
   if (isFollowing) {
     await User.findByIdAndUpdate(currentUserId, {
       $pull: { following: targetUserId },
     });
+
     await User.findByIdAndUpdate(targetUserId, {
       $pull: { followers: currentUserId },
+    });
+
+    await Notification.findOneAndDelete({
+      recipient: targetUserId,
+      sender: currentUserId,
+      type: "follow",
     });
     res.status(200).json({
       success: true,
@@ -450,6 +458,13 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     await User.findByIdAndUpdate(targetUserId, {
       $addToSet: { followers: currentUserId },
     });
+    
+    await Notification.create({
+      recipient: targetUserId,
+      sender: currentUserId,
+      type: "follow",
+    });
+
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
@@ -459,6 +474,37 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
+// GET USER FOLLOWING
+const getUserFollowing = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.params.userId as string;
+    const user = await User.findById(userId).populate({
+      path: "following",
+      select: "fullName username profilePicture",
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "User not found" },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: {
+        followingCount: user.following?.length || 0,
+        following: user.following || [],
+      },
+    });
+    return;
+  },
+);
+
+// GET USER FOLLOWERS
 const getUserFollowers = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.params.userId as string;
@@ -480,33 +526,6 @@ const getUserFollowers = asyncHandler(
       data: {
         followersCount: user.followers?.length || 0,
         followers: user.followers || [],
-      },
-    });
-    return;
-  },
-);
-
-const getUserFollowing = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.params.userId as string;
-    const user = await User.findById(userId).populate({
-      path: "following",
-      select: "fullName username profilePicture ",
-    });
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "User not found" },
-      });
-      return;
-    }
-    res.status(200).json({
-      success: true,
-      message: "Request processed successfully",
-      data: {
-        followingCount: user.following?.length || 0,
-        following: user.following || [],
       },
     });
     return;

@@ -103,14 +103,24 @@ function FollowUserRow({
             </Text>
           </div>
 
-          <Text as="p" size="xs" color="secondary" className="truncate text-[11px] font-medium">
+          <Text
+            as="p"
+            size="xs"
+            color="secondary"
+            className="truncate text-[11px] font-medium"
+          >
             @{user.username}
           </Text>
 
           {user.jobTitle && (
             <div className="flex items-center gap-1 mt-0.5">
               <Briefcase className="h-3 w-3 text-primary/70 shrink-0" />
-              <Text as="span" size="xs" color="secondary" className="truncate text-[10px]">
+              <Text
+                as="span"
+                size="xs"
+                color="secondary"
+                className="truncate text-[10px]"
+              >
                 {user.jobTitle}
               </Text>
             </div>
@@ -206,24 +216,22 @@ export default function FollowersModal({
   }, [isOpen, onClose]);
 
   // Queries for followers and following lists
-  const {
-    data: followersData,
-    isLoading: isFollowersLoading,
-  } = useGetUserFollowers(userId, isOpen && activeTab === "followers");
+  const { data: followersData, isLoading: isFollowersLoading } =
+    useGetUserFollowers(userId, isOpen && activeTab === "followers");
 
-  const {
-    data: followingData,
-    isLoading: isFollowingLoading,
-  } = useGetUserFollowing(userId, isOpen && activeTab === "following");
+  const { data: followingData, isLoading: isFollowingLoading } =
+    useGetUserFollowing(userId, isOpen && activeTab === "following");
 
   // Query for current user's following list
   const { data: myFollowingData } = useGetUserFollowing(
     currentUserId || "",
-    isOpen && !!currentUserId
+    isOpen && !!currentUserId,
   );
 
   // Set of IDs the current user is following
-  const [localFollowingIds, setLocalFollowingIds] = useState<Set<string>>(new Set());
+  const [localFollowingIds, setLocalFollowingIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     if (currentUser || myFollowingData) {
@@ -244,11 +252,14 @@ export default function FollowersModal({
   const followersCount = followersData?.followersCount ?? currentList.length;
   const followingCount = Math.max(
     0,
-    (followingData?.followingCount ?? currentList.length) + followingCountDelta
+    (followingData?.followingCount ?? currentList.length) + followingCountDelta,
   );
 
   // Instant handler when follow or unfollow is clicked in a row
-  const handleFollowToggle = (targetUser: FollowUserItem, wasFollowing: boolean) => {
+  const handleFollowToggle = (
+    targetUser: FollowUserItem,
+    wasFollowing: boolean,
+  ) => {
     if (wasFollowing) {
       // Unfollowed this user:
       // 1. Immediately remove from local following set
@@ -293,7 +304,7 @@ export default function FollowersModal({
       (u) =>
         u.fullName?.toLowerCase().includes(q) ||
         u.username?.toLowerCase().includes(q) ||
-        u.jobTitle?.toLowerCase().includes(q)
+        u.jobTitle?.toLowerCase().includes(q),
     );
   }, [currentList, searchQuery, removedUserIds]);
 
@@ -341,33 +352,6 @@ export default function FollowersModal({
             <button
               type="button"
               onClick={() => {
-                setActiveTab("followers");
-                setSearchQuery("");
-              }}
-              className={`relative py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
-                activeTab === "followers"
-                  ? "bg-primary text-white shadow-md shadow-primary/25"
-                  : "text-textSecondary hover:text-textPrimary"
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>{t.profile.followers}</span>
-              {followersData && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                    activeTab === "followers"
-                      ? "bg-white/20 text-white"
-                      : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  {followersCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
                 setActiveTab("following");
                 setSearchQuery("");
               }}
@@ -388,6 +372,32 @@ export default function FollowersModal({
                   }`}
                 >
                   {followingCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("followers");
+                setSearchQuery("");
+              }}
+              className={`relative py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+                activeTab === "followers"
+                  ? "bg-primary text-white shadow-md shadow-primary/25"
+                  : "text-textSecondary hover:text-textPrimary"
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>{t.profile.followers}</span>
+              {followersData && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                    activeTab === "followers"
+                      ? "bg-white/20 text-white"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  {followersCount}
                 </span>
               )}
             </button>
@@ -441,12 +451,18 @@ export default function FollowersModal({
                   <UserCheck className="h-6 w-6 text-primary" />
                 )}
               </div>
-              <Text as="p" size="sm" font="bold" color="primary" className="mb-1">
+              <Text
+                as="p"
+                size="sm"
+                font="bold"
+                color="primary"
+                className="mb-1"
+              >
                 {searchQuery
                   ? t.profile.noUsersFound
                   : activeTab === "followers"
-                  ? t.profile.noFollowers
-                  : t.profile.noFollowing}
+                    ? t.profile.noFollowers
+                    : t.profile.noFollowing}
               </Text>
               {searchQuery && (
                 <Text as="p" size="xs" color="secondary">
@@ -479,7 +495,9 @@ export default function FollowersModal({
                     user={user}
                     currentUserId={currentUserId}
                     isFollowing={localFollowingIds.has(user._id)}
-                    onFollowToggle={(wasFollowing) => handleFollowToggle(user, wasFollowing)}
+                    onFollowToggle={(wasFollowing) =>
+                      handleFollowToggle(user, wasFollowing)
+                    }
                     onUserClick={onClose}
                   />
                 </motion.div>
@@ -489,6 +507,6 @@ export default function FollowersModal({
         </div>
       </motion.div>
     </div>,
-    document.body
+    document.body,
   );
 }

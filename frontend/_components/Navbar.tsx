@@ -25,6 +25,7 @@ import { Text } from "@/_components/Text";
 import Tooltip from "@/_components/Tooltip";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
+import NotificationDropdown from "@/_components/NotificationDropdown";
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
@@ -414,6 +415,9 @@ const Navbar = () => {
                 </Link>
               </Tooltip>
             )}
+
+          {/* Notifications Dropdown */}
+          {mounted && token && <NotificationDropdown />}
 
           {/* User Dropdown / Auth Links */}
           {mounted &&

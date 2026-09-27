@@ -16,6 +16,21 @@ export interface NavTranslations {
   language: string;
   english: string;
   arabic: string;
+  notifications: string;
+  markAllAsRead: string;
+  noNotifications: string;
+  noUnreadNotifications: string;
+  allNotifications: string;
+  unreadNotifications: string;
+  notifFollow: string;
+  notifLike: string;
+  notifComment: string;
+  notifReply: string;
+  notifShare: string;
+  notifLikeComment: string;
+  notifLikeReply: string;
+  viewPost: string;
+  viewProfile: string;
 }
 
 export const navTranslations: Record<Language, NavTranslations> = {
@@ -35,6 +50,21 @@ export const navTranslations: Record<Language, NavTranslations> = {
     language: "Language",
     english: "English",
     arabic: "عربي (مصري)",
+    notifications: "Notifications",
+    markAllAsRead: "Mark all as read",
+    noNotifications: "No notifications yet",
+    noUnreadNotifications: "No unread notifications",
+    allNotifications: "All",
+    unreadNotifications: "Unread",
+    notifFollow: "started following you",
+    notifLike: "liked your post",
+    notifComment: "commented on your post",
+    notifReply: "replied to your comment",
+    notifShare: "shared your post",
+    notifLikeComment: "liked your comment",
+    notifLikeReply: "liked your reply",
+    viewPost: "View Post",
+    viewProfile: "View Profile",
   },
   ar: {
     searchPlaceholder: "ابحث عن مستخدم بالاسم أو اليوزر نيم...",
@@ -52,5 +82,22 @@ export const navTranslations: Record<Language, NavTranslations> = {
     language: "اللغة",
     english: "English",
     arabic: "عربي (مصري)",
+    notifications: "الإشعارات",
+    markAllAsRead: "تحديد الكل كمقروء",
+    noNotifications: "مفيش أي إشعارات دلوقتي",
+    noUnreadNotifications: "مفيش إشعارات جديدة غير مقروءة",
+    allNotifications: "الكل",
+    unreadNotifications: "غير المقروءة",
+    notifFollow: "بدأ يتابعك",
+    notifLike: "عمل لايك على منشورك",
+    notifComment: "علق على منشورك",
+    notifReply: "رد على تعليقك",
+    notifShare: "شير منشورك",
+    notifLikeComment: "عمل لايك على تعليقك",
+    notifLikeReply: "عمل لايك على ردك",
+    viewPost: "عرض البوست",
+    viewProfile: "عرض البروفايل",
   },
 };
+
+

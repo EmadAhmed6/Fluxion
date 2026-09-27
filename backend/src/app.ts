@@ -5,16 +5,16 @@ import { notFound, errorHandler } from "./middlewares/errors.js";
 import auth from "./modules/auth/auth.routes.js";
 import users from "./modules/user/user.routes.js";
 import posts from "./modules/posts/post.routes.js";
+import notifications from "./modules/notifications/notifications.routes.js";
 import helmet from "helmet";
 import cors from "cors";
 import swaggerui from "swagger-ui-express";
 import spacs from "./config/swagger.js";
 import { apiLimiter } from "./middlewares/limiter.js";
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import session from "express-session";
 import passport, { type Profile } from "passport";
 import passportGoogle from "passport-google-oauth20";
-import type { VerifyCallback } from "jsonwebtoken";
 import configurePassport from "./config/passport.js";
 const GoogleStrategy = passportGoogle.Strategy;
 import cookieParser from "cookie-parser";
@@ -45,6 +45,7 @@ configurePassport();
 app.use("/auth", auth);
 app.use("/users", apiLimiter, users);
 app.use("/posts", apiLimiter, posts);
+app.use("/notifications", notifications);
 
 app.use("/api-docs", swaggerui.serve, swaggerui.setup(spacs));
 

@@ -39,6 +39,7 @@ router.post(
   verifyAuthorizedToken,
   changePassword,
 );
+
 router.get("/:userId/followers", verifyToken, getUserFollowers);
 router.get("/:userId/following", verifyToken, getUserFollowing);
 router.put("/:userId/follow", verifyToken, toggleFollowUser);
