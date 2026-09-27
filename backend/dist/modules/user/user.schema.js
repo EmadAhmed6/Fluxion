@@ -5,22 +5,13 @@ const passwordSchema = z
     .max(72, "Password must be at most 72 characters")
     .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must include uppercase, lowercase, and numbers");
 const RegisterSchema = z.object({
-    fullName: z
-        .string()
-        .min(3, "Full name must be at least 3 characters long")
-        .max(100, "Full name must not exceed 100 characters")
-        .optional()
-        .or(z.literal("")),
+    fullName: z.string().min(3).max(100),
     username: z
         .string()
-        .min(3, "Username must be at least 3 characters long")
-        .max(50, "Username must not exceed 50 characters")
+        .min(3)
+        .max(50)
         .regex(/^[a-zA-Z0-9_]+$/, "Username must contain only letters, numbers, and underscores"),
-    email: z
-        .string()
-        .email("Invalid email address")
-        .trim()
-        .min(4, "Email must be at least 4 characters long"),
+    email: z.string().email().trim().min(4),
     jobTitle: z.string().min(3).max(50).optional().or(z.literal("")),
     password: passwordSchema,
 });

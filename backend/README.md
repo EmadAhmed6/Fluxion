@@ -47,6 +47,11 @@ Includes JSON Web Token (JWT) authentication, role-based authorization, rate lim
 - **Profile Details**: Supports `username` (up to 50 chars), `jobTitle` (up to 50 chars), `bio` (up to 250 chars), and profile picture uploads.
 - **Cloudinary Cleanup**: Legacy Cloudinary images are automatically deleted when updated or removed.
 
+### 🔔 5. Real-Time & Event Notifications
+
+- **Notifications (`/notifications`)**: Retrieve user notifications with populated sender info, mark all notifications as read, or mark individual notifications as read.
+- **Activity Triggers**: Supports notifications for follow, comment, like, share, reply, comment like, and reply like events.
+
 ---
 
 ## 📊 Database Entity-Relationship (ER) Diagram
@@ -59,6 +64,7 @@ erDiagram
     COMMENT ||--o{ COMMENT : "replies"
     USER ||--o{ POST : "likes"
     USER ||--o{ COMMENT : "likes"
+    USER ||--o{ NOTIFICATION : "receives/triggers"
 
     USER {
         ObjectId id PK
@@ -103,6 +109,19 @@ erDiagram
         array likes
         number commentLikesCount
         number replyCommentsCount
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    NOTIFICATION {
+        ObjectId id PK
+        ObjectId recipient FK
+        ObjectId sender FK
+        string type
+        ObjectId post FK
+        ObjectId comment FK
+        ObjectId reply FK
+        boolean isRead
         datetime createdAt
         datetime updatedAt
     }

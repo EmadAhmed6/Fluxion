@@ -5,6 +5,7 @@ import { notFound, errorHandler } from "./middlewares/errors.js";
 import auth from "./modules/auth/auth.routes.js";
 import users from "./modules/user/user.routes.js";
 import posts from "./modules/posts/post.routes.js";
+import notifications from "./modules/notifications/notifications.routes.js";
 import helmet from "helmet";
 import cors from "cors";
 import swaggerui from "swagger-ui-express";
@@ -15,6 +16,7 @@ import passport, {} from "passport";
 import passportGoogle from "passport-google-oauth20";
 import configurePassport from "./config/passport.js";
 const GoogleStrategy = passportGoogle.Strategy;
+import cookieParser from "cookie-parser";
 dotenv.config();
 const app = express();
 connectToDB();
@@ -22,13 +24,19 @@ app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(session({ secret: process.env.JWT_SECRET_KEY || "secret", resave: false, saveUninitialized: true }));
+app.use(cookieParser());
+app.use(session({
+    secret: process.env.JWT_SECRET_KEY || "secret",
+    resave: false,
+    saveUninitialized: true,
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 configurePassport();
 app.use("/auth", auth);
 app.use("/users", apiLimiter, users);
 app.use("/posts", apiLimiter, posts);
+app.use("/notifications", notifications);
 app.use("/api-docs", swaggerui.serve, swaggerui.setup(spacs));
 app.use(notFound);
 app.use(errorHandler);

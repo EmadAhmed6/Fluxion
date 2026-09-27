@@ -6,6 +6,7 @@ import cloudinary from "../../utils/cloudinary.js";
 import { Types } from "mongoose";
 import { Post } from "../posts/post.model.js";
 import { User } from "../user/user.model.js";
+import Notification from "../notifications/notifications.model.js";
 // GET ALL COMMENTS
 const getAllComments = asyncHandler(async (req, res) => {
     const pageNumber = Number(req.query.pageNumber) || 1;
@@ -85,6 +86,11 @@ const createComment = asyncHandler(async (req, res) => {
         });
         return;
     }
+    const post = await Post.findById(postId);
+    if (!post) {
+        res.status(404).json({ success: false, message: "Post was not found" });
+        return;
+    }
     let commentImage = {
         url: "",
         publicId: "",
@@ -108,6 +114,15 @@ const createComment = asyncHandler(async (req, res) => {
     await newComment.save();
     const finalComment = await Comment.findById(newComment._id).populate("user", ["_id", "username", "fullName", "profilePicture", "jobTitle", "bio"]);
     await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
+    const currentUserId = req.user?.id;
+    if (post.user.toString() !== currentUserId) {
+        await Notification.create({
+            recipient: post.user,
+            sender: new Types.ObjectId(currentUserId),
+            type: "comment",
+            post: post._id,
+        });
+    }
     res.status(201).json({
         success: true,
         message: "Request processed successfully",
@@ -143,6 +158,7 @@ const updateComment = asyncHandler(async (req, res) => {
     }
     const commentOwner = await User.findById(comment.user);
     if (commentOwner?.role === "SuperAdmin" &&
+        comment.user.toString() !== req.user?.id &&
         req.user?.role !== "SuperAdmin") {
         res.status(403).json({
             success: false,
@@ -198,6 +214,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     const comment = await Comment.findById(new Types.ObjectId(commentId));
     const commentOwner = await User.findById(comment?.user);
     if (commentOwner?.role === "SuperAdmin" &&
+        comment?.user.toString() !== req.user?.id &&
         req.user?.role !== "SuperAdmin") {
         res.status(403).json({
             success: false,
@@ -260,6 +277,25 @@ const likeComment = asyncHandler(async (req, res) => {
         "jobTitle",
         "bio",
     ]);
+    const currentUserId = req.user?.id;
+    if (!isLiked && comment.user.toString() !== currentUserId) {
+        await Notification.create({
+            recipient: comment.user,
+            sender: currentUserId,
+            type: "like_comment",
+            post: comment.postId,
+            comment: comment._id,
+        });
+    }
+    else if (isLiked) {
+        await Notification.findOneAndDelete({
+            recipient: comment.user,
+            sender: currentUserId,
+            type: "like_comment",
+            post: comment.postId,
+            comment: comment._id,
+        });
+    }
     res.status(200).json({
         success: true,
         message: "Request processed successfully",

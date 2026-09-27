@@ -6,6 +6,7 @@ import fs from "fs";
 import cloudinary from "../../utils/cloudinary.js";
 import { Types } from "mongoose";
 import { User } from "../user/user.model.js";
+import Notification from "../notifications/notifications.model.js";
 // GET ALL POSTS
 const getAllPosts = asyncHandler(async (req, res) => {
     const { search } = req.query;
@@ -195,7 +196,9 @@ const deletePost = asyncHandler(async (req, res) => {
         return;
     }
     const postOwner = await User.findById(post.user);
-    if (postOwner?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (postOwner?.role === "SuperAdmin" &&
+        post.user.toString() !== req.user?.id &&
+        req.user?.role !== "SuperAdmin") {
         res
             .status(403)
             .json({ success: false, message: "You can't delete Owner post" });
@@ -239,6 +242,22 @@ const likePost = asyncHandler(async (req, res) => {
             $push: { likes: userObjectId },
             $inc: { postLikesCount: 1 },
         }, { new: true }).populate("likes", ["_id", "username", "fullName", "profilePicture"]);
+    if (!isLiked && post.user.toString() !== userId) {
+        await Notification.create({
+            recipient: post.user,
+            sender: userObjectId,
+            type: "like",
+            post: post._id,
+        });
+    }
+    else if (isLiked) {
+        await Notification.findOneAndDelete({
+            recipient: post.user,
+            sender: userObjectId,
+            type: "like",
+            post: post._id,
+        });
+    }
     res.status(200).json({ success: true, data: updatedPost });
     return;
 });
@@ -271,6 +290,12 @@ const sharePost = asyncHandler(async (req, res) => {
     });
     await User.findByIdAndUpdate(req.user.id, {
         $inc: { postsCount: 1 },
+    });
+    await Notification.create({
+        recipient: originalPost.user,
+        post: originalPost._id,
+        sender: new Types.ObjectId(req.user.id),
+        type: "share",
     });
     res.status(201).json({
         success: true,

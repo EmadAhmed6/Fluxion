@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { Post } from "../modules/posts/post.model.js";
 import { Comment } from "../modules/comment/comment.model.js";
 import { Types } from "mongoose";
+import { decode } from "punycode";
 const verifyToken = (req, res, next) => {
     let token = req.headers.authorization;
     const secret = process.env.JWT_SECRET_KEY;
@@ -22,6 +23,30 @@ const verifyToken = (req, res, next) => {
     }
     catch (err) {
         return res.status(401).json({ message: "Invalid token" });
+    }
+};
+const verifyRefreshToken = (req, res, next) => {
+    const refreshToken = req.cookies?.refreshToken;
+    const secret = process.env.JWT_REFRESH_KEY;
+    if (typeof secret !== "string" || secret.length === 0) {
+        return res
+            .status(500)
+            .json({ message: "Refresh secret is not configured" });
+    }
+    if (!refreshToken) {
+        return res
+            .status(401)
+            .json({ message: "No refresh token was found in cookies" });
+    }
+    try {
+        const decoded = jwt.verify(refreshToken, secret);
+        req.user = { id: decoded.id, role: decoded.role || "User" };
+        next();
+    }
+    catch (err) {
+        return res
+            .status(403)
+            .json({ message: "Invalid or expired refresh token" });
     }
 };
 const verifyAuthorizedToken = (req, res, next) => {
@@ -49,7 +74,7 @@ const verifyAdminToken = (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
-        if (req.user.role === "Admin") {
+        if (req.user.role === "Admin" || req.user.role === "SuperAdmin") {
             next();
         }
         else {
@@ -126,5 +151,5 @@ const verifyCommentOwner = (req, res, next) => {
         }
     });
 };
-export { verifyToken, verifyAuthorizedToken, verifyAdminToken, verifySuperAdminToken, verifyPostOwner, verifyCommentOwner, };
+export { verifyToken, verifyRefreshToken, verifyAuthorizedToken, verifyAdminToken, verifySuperAdminToken, verifyPostOwner, verifyCommentOwner, };
 //# sourceMappingURL=verifyToken.js.map

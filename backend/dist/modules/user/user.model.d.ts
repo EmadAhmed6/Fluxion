@@ -1,14 +1,18 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import { type IChangePassword, type ILoginUser, type IOtp, type IRegisterUser, type IResetPassword, type IUserSchema } from "./user.schema.js";
 interface IUser extends Document, IUserSchema {
     generateToken: () => string;
+    refreshToken: string;
+    generateRefreshToken: () => string;
     isVerified: boolean;
     postsCount: number;
     role: "User" | "Admin" | "SuperAdmin";
     provider: "local" | "google" | "github";
+    following: Types.ObjectId[];
+    followers: Types.ObjectId[];
 }
 declare const validateRegisterUser: (user: IRegisterUser) => import("zod").ZodSafeParseResult<{
-    fullName?: string | undefined;
+    fullName: string;
     username: string;
     email: string;
     jobTitle?: string | undefined;
@@ -54,7 +58,7 @@ declare const validateUpdateUser: (user: Partial<IUser> & {
     bio?: string | undefined;
 }>;
 declare const User: import("mongoose").Model<IUser, {}, {}, {}, Document<unknown, {}, IUser, {}, import("mongoose").DefaultSchemaOptions> & IUser & Required<{
-    _id: import("mongoose").Types.ObjectId;
+    _id: Types.ObjectId;
 }> & {
     __v: number;
 } & {

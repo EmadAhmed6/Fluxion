@@ -59,33 +59,36 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 9   | POST   | `/auth/forgot-password`                                           | Send password reset link to user's email                         |  ❌  |  🔒 10 req/min   |
 | 10  | POST   | `/auth/reset-password/:userId/:token`                             | Validate reset token and update password                         |  ❌  |        —         |
 | 11  | GET    | `/auth/me`                                                        | Retrieve currently authenticated user profile                    |  🔒  |        —         |
-| 10  | GET    | `/users`                                                          | Retrieve list of all users                                       |  🔒  | 🔒 100 req/15min |
-| 11  | GET    | `/users/:userId`                                                  | Retrieve detailed user profile                                   |  🔒  | 🔒 100 req/15min |
-| 12  | PUT    | `/users/:userId`                                                  | Update profile details, jobTitle, bio, avatar (OAuth restricted) |  🔒  | 🔒 100 req/15min |
-| 13  | PATCH  | `/users/:userId/toggle-admin`                                     | Toggle user Admin role status (Super Admin Only)                 |  🔒  | 🔒 100 req/15min |
-| 14  | POST   | `/users/:userId/change-password`                                  | Change account password (Local Auth Owners Only)                 |  🔒  |  🔒 10 req/min   |
-| 15  | DELETE | `/users/:userId`                                                  | Delete user account from the database                            |  🔒  | 🔒 100 req/15min |
-| 16  | DELETE | `/users/:userId/profile-image`                                    | Delete user profile picture (Owner or Super Admin Only)          |  🔒  | 🔒 100 req/15min |
-| 17  | PUT    | `/users/:userId/follow`                                           | Toggle follow/unfollow a user                                    |  🔒  | 🔒 100 req/15min |
-| 18  | GET    | `/users/:userId/followers`                                        | Retrieve the list of followers for a user                        |  🔒  | 🔒 100 req/15min |
-| 19  | GET    | `/users/:userId/following`                                        | Retrieve the list of users a user is following                   |  🔒  | 🔒 100 req/15min |
-| 20  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
-| 21  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
-| 22  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
-| 23  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
-| 24  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
-| 25  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
-| 26  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
-| 27  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
-| 28  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
-| 29  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
-| 30  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
-| 31  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
-| 32  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
-| 33  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
-| 34  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
-| 35  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
-| 36  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
+| 12  | GET    | `/users`                                                          | Retrieve list of all users                                       |  🔒  | 🔒 100 req/15min |
+| 13  | GET    | `/users/:userId`                                                  | Retrieve detailed user profile                                   |  🔒  | 🔒 100 req/15min |
+| 14  | PUT    | `/users/:userId`                                                  | Update profile details, jobTitle, bio, avatar (OAuth restricted) |  🔒  | 🔒 100 req/15min |
+| 15  | PATCH  | `/users/:userId/toggle-admin`                                     | Toggle user Admin role status (Super Admin Only)                 |  🔒  | 🔒 100 req/15min |
+| 16  | POST   | `/users/:userId/change-password`                                  | Change account password (Local Auth Owners Only)                 |  🔒  |  🔒 10 req/min   |
+| 17  | DELETE | `/users/:userId`                                                  | Delete user account from the database                            |  🔒  | 🔒 100 req/15min |
+| 18  | DELETE | `/users/:userId/profile-image`                                    | Delete user profile picture (Owner or Super Admin Only)          |  🔒  | 🔒 100 req/15min |
+| 19  | PUT    | `/users/:userId/follow`                                           | Toggle follow/unfollow a user                                    |  🔒  | 🔒 100 req/15min |
+| 20  | GET    | `/users/:userId/followers`                                        | Retrieve the list of followers for a user                        |  🔒  | 🔒 100 req/15min |
+| 21  | GET    | `/users/:userId/following`                                        | Retrieve the list of users a user is following                   |  🔒  | 🔒 100 req/15min |
+| 22  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
+| 23  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
+| 24  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
+| 25  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
+| 26  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
+| 27  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
+| 28  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
+| 29  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
+| 30  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
+| 31  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
+| 32  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
+| 33  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
+| 34  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
+| 35  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
+| 36  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
+| 37  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
+| 38  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
+| 39  | GET    | `/notifications`                                                  | Retrieve all notifications for authenticated user                |  🔒  |        —         |
+| 40  | PATCH  | `/notifications`                                                  | Mark all notifications as read for authenticated user            |  🔒  |        —         |
+| 41  | PATCH  | `/notifications/:notificationId`                                  | Mark a specific notification as read                             |  🔒  |        —         |
 
 ---
 
@@ -96,6 +99,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
   - [Follow Feature](#follow-feature)
 - [Post Management Endpoints](#post-management-endpoints)
 - [Comment Management Endpoints](#comment-management-endpoints)
+- [Notification Management Endpoints](#notification-management-endpoints)
 - [Common HTTP Status Codes](#common-http-status-codes)
 
 ---
@@ -2329,6 +2333,123 @@ Comment or reply comment was not found.
   "success": false,
   "data": {
     "message": "Comment was not found"
+  }
+}
+```
+
+---
+
+## Notification Management Endpoints
+
+### GET /notifications 🔒
+Retrieve the latest 30 notifications for the authenticated user, sorted in descending order (newest first), with populated sender user details.
+
+#### Responses
+
+##### Response 200
+Notifications retrieved successfully.
+```json
+{
+  "success": true,
+  "message": "Request succeed",
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012345",
+      "recipient": "65f1a2b3c4d5e6f789012340",
+      "sender": {
+        "_id": "65f1a2b3c4d5e6f789012341",
+        "fullName": "Ahmed Mohamed",
+        "username": "ahmed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
+          "publicId": "avatar_123"
+        }
+      },
+      "type": "like",
+      "post": "65f1a2b3c4d5e6f789012342",
+      "comment": "65f1a2b3c4d5e6f789012343",
+      "reply": "65f1a2b3c4d5e6f789012344",
+      "isRead": false,
+      "createdAt": "2026-09-27T12:00:00.000Z",
+      "updatedAt": "2026-09-27T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### PATCH /notifications 🔒
+Mark all notifications as read for the authenticated user (`isRead: true`).
+
+#### Responses
+
+##### Response 200
+All notifications marked as read successfully.
+```json
+{
+  "success": true,
+  "message": "Request succeed",
+  "data": {
+    "acknowledged": true,
+    "modifiedCount": 5,
+    "upsertedId": null,
+    "upsertedCount": 0,
+    "matchedCount": 5
+  }
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### PATCH /notifications/:notificationId 🔒
+Mark a specific notification as read by ID (`isRead: true`). Only the recipient of the notification can mark it as read.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `notificationId` | string | ✅ | ID of the notification to mark as read. |
+
+#### Responses
+
+##### Response 200
+Notification marked as read successfully.
+```json
+{
+  "success": true,
+  "message": "Request succeed",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "recipient": "65f1a2b3c4d5e6f789012340",
+    "sender": "65f1a2b3c4d5e6f789012341",
+    "type": "like",
+    "post": "65f1a2b3c4d5e6f789012342",
+    "comment": "65f1a2b3c4d5e6f789012343",
+    "reply": "65f1a2b3c4d5e6f789012344",
+    "isRead": true,
+    "createdAt": "2026-09-27T12:00:00.000Z",
+    "updatedAt": "2026-09-27T12:05:00.000Z"
+  }
+}
+```
+
+##### Response 401
+Not authorized.
+
+##### Response 404
+Notification was not found.
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "Notification not found"
   }
 }
 ```

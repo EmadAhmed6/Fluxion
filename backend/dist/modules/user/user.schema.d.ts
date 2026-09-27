@@ -1,7 +1,7 @@
 import { z } from "zod";
 declare const passwordSchema: z.ZodString;
 declare const RegisterSchema: z.ZodObject<{
-    fullName: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    fullName: z.ZodString;
     username: z.ZodString;
     email: z.ZodString;
     jobTitle: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;

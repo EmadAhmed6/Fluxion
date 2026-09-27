@@ -5,7 +5,6 @@ const passwordSchema = z
     .max(72, "Password must be at most 72 characters")
     .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must include uppercase, lowercase, and numbers");
 const RegisterSchema = z.object({
-    fullName: z.string().min(3).max(100).optional().or(z.literal("")),
     username: z.string().min(3).max(50),
     email: z.string().email().trim().min(4),
     password: passwordSchema,

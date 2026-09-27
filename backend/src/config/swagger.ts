@@ -40,6 +40,14 @@ const options: Options = {
         name: "Posts",
         description: "Blog posts management APIs",
       },
+      {
+        name: "Comments",
+        description: "Comments and Replies management APIs",
+      },
+      {
+        name: "Notifications",
+        description: "Notifications management APIs",
+      },
     ],
   },
   apis: [docsPath],

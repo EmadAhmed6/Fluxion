@@ -4,6 +4,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { User, validateChangePassword, validateUpdateUser, } from "./user.model.js";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import Notification from "../notifications/notifications.model.js";
 // GET ALL USERS
 const getAllUsers = asyncHandler(async (req, res) => {
     const { search, role, provider } = req.query;
@@ -24,27 +25,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
     if (provider) {
         query.provider = provider;
     }
-    // const users = await User.aggregate([
-    //   { $match: query },
-    //   {
-    //     $addFields: {
-    //       roleOrder: {
-    //         $switch: {
-    //           branches: [
-    //             { case: { eq: ["$role", "SuperAdmin"] }, then: 1 },
-    //             { case: { eq: ["$role", "Admin"] }, then: 2 },
-    //             { case: { eq: ["$role", "User"] }, then: 3 },
-    //           ],
-    //           default: 4,
-    //         },
-    //       },
-    //     },
-    //   },
-    //   { $sort: { roleOrder: 1, createdAt: -1 } },
-    //   { $skip: (pageNumber - 1) * userPerPage },
-    //   { $limit: userPerPage },
-    //   { $project: { roleOrder: 0, password: 0 } },
-    // ]);
     const users = await User.find(query)
         .skip((pageNumber - 1) * userPerPage)
         .limit(userPerPage)
@@ -182,7 +162,9 @@ const updateUser = asyncHandler(async (req, res) => {
             return;
         }
     }
-    if (user.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    const isOwner = req.user?.id === req.params.userId;
+    const isSuperAdmin = req.user?.role === "SuperAdmin";
+    if (user.role === "SuperAdmin" && !isOwner && !isSuperAdmin) {
         res.status(403).json({
             success: false,
             message: "Request failed",
@@ -224,10 +206,52 @@ const updateUser = asyncHandler(async (req, res) => {
     });
     return;
 });
+// Delete Profile Image
+const deleteProfileImage = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+        res.status(404).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "User not found" },
+        });
+        return;
+    }
+    const isOwner = req.user?.id === req.params.userId;
+    const isSuperAdmin = req.user?.role === "SuperAdmin";
+    if (!isOwner && !isSuperAdmin) {
+        res.status(403).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "You cannot delete profile picture" },
+        });
+        return;
+    }
+    if (!isOwner && !isSuperAdmin) {
+        res.status(403).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "You cannot modify Owner's profile" },
+        });
+        return;
+    }
+    if (user.profilePicture?.publicId) {
+        await cloudinary.uploader.destroy(user.profilePicture.publicId);
+    }
+    const updatedUser = await User.findByIdAndUpdate(req.params.userId, { $unset: { profilePicture: 1 } }, { returnDocument: "after", runValidators: true });
+    res.status(200).json({
+        success: true,
+        message: "Request processed successfully",
+        data: updatedUser,
+    });
+    return;
+});
 // DELETE USER
 const deleteUser = asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.userId);
-    if (user?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (user?.role === "SuperAdmin" &&
+        req.user?.id !== req.params.userId &&
+        req.user?.role !== "SuperAdmin") {
         res.status(403).json({
             success: false,
             message: "Request failed",
@@ -247,6 +271,7 @@ const deleteUser = asyncHandler(async (req, res) => {
         return;
     }
 });
+// CHANGE USER PASSWORD
 const changePassword = asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.userId);
     if (!user) {
@@ -292,6 +317,7 @@ const changePassword = asyncHandler(async (req, res) => {
     });
     return;
 });
+// TOGGLE USER ADMIN
 const toggleAdminStatus = asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.userId);
     if (!user) {
@@ -313,5 +339,126 @@ const toggleAdminStatus = asyncHandler(async (req, res) => {
     });
     return;
 });
-export { getAllUsers, getUserById, updateUser, deleteUser, toggleAdminStatus, changePassword, };
+// FOLLOW USER
+const toggleFollowUser = asyncHandler(async (req, res) => {
+    const currentUserId = req.user?.id;
+    const targetUserId = req.params.userId;
+    if (currentUserId === targetUserId) {
+        res.status(400).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "You cannot follow yourself" },
+        });
+        return;
+    }
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+        res.status(404).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "User was not found" },
+        });
+        return;
+    }
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+        res.status(404).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "User not found" },
+        });
+        return;
+    }
+    const isFollowing = currentUser.following?.some((id) => id.toString() === targetUserId) ||
+        false;
+    if (isFollowing) {
+        await User.findByIdAndUpdate(currentUserId, {
+            $pull: { following: targetUserId },
+        });
+        await User.findByIdAndUpdate(targetUserId, {
+            $pull: { followers: currentUserId },
+        });
+        await Notification.findOneAndDelete({
+            recipient: targetUserId,
+            sender: currentUserId,
+            type: "follow",
+        });
+        res.status(200).json({
+            success: true,
+            message: "Request processed successfully",
+            data: { message: "Unfollowed successfully" },
+        });
+        return;
+    }
+    else {
+        await User.findByIdAndUpdate(currentUserId, {
+            $addToSet: { following: targetUserId },
+        });
+        await User.findByIdAndUpdate(targetUserId, {
+            $addToSet: { followers: currentUserId },
+        });
+        await Notification.create({
+            recipient: targetUserId,
+            sender: currentUserId,
+            type: "follow",
+        });
+        res.status(200).json({
+            success: true,
+            message: "Request processed successfully",
+            data: { message: "Followed successfully" },
+        });
+        return;
+    }
+});
+// GET USER FOLLOWING
+const getUserFollowing = asyncHandler(async (req, res) => {
+    const userId = req.params.userId;
+    const user = await User.findById(userId).populate({
+        path: "following",
+        select: "fullName username profilePicture",
+    });
+    if (!user) {
+        res.status(404).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "User not found" },
+        });
+        return;
+    }
+    res.status(200).json({
+        success: true,
+        message: "Request processed successfully",
+        data: {
+            followingCount: user.following?.length || 0,
+            following: user.following || [],
+        },
+    });
+    return;
+});
+// GET USER FOLLOWERS
+const getUserFollowers = asyncHandler(async (req, res) => {
+    const userId = req.params.userId;
+    const user = await User.findById(userId).populate({
+        path: "followers",
+        select: "fullName username profilePicture",
+    });
+    if (!user) {
+        res.status(404).json({
+            success: false,
+            message: "Request failed",
+            data: { message: "User not found" },
+        });
+        return;
+    }
+    res.status(200).json({
+        success: true,
+        message: "Request processed successfully",
+        data: {
+            followersCount: user.followers?.length || 0,
+            followers: user.followers || [],
+        },
+    });
+    return;
+});
+export { getAllUsers, getUserById, updateUser, deleteUser, deleteProfileImage, toggleAdminStatus, changePassword, toggleFollowUser, getUserFollowers, getUserFollowing, };
 //# sourceMappingURL=user.controller.js.map

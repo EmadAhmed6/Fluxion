@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { Document, Schema, model } from "mongoose";
+import { Document, Schema, model, Types } from "mongoose";
 import { ChangePasswordSchema, ForgotPasswordSchema, LoginSchema, OtpSchema, RegisterSchema, ResetPasswordSchema, UpdateUserSchema, } from "./user.schema.js";
 const userSchema = new Schema({
     fullName: {
@@ -27,6 +27,11 @@ const userSchema = new Schema({
             return this.provider === "local";
         },
         minLength: 6,
+    },
+    role: {
+        type: String,
+        enum: ["User", "Admin", "SuperAdmin"],
+        default: "User",
     },
     provider: {
         type: String,
@@ -68,12 +73,23 @@ const userSchema = new Schema({
             publicId: null,
         },
     },
-    isVerified: { type: Boolean, default: false },
-    role: {
+    refreshToken: {
         type: String,
-        enum: ["User", "Admin", "SuperAdmin"],
-        default: "User",
+        select: false,
     },
+    isVerified: { type: Boolean, default: false },
+    following: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+        },
+    ],
+    followers: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+        },
+    ],
 }, {
     timestamps: true,
     toJSON: {
@@ -91,7 +107,14 @@ userSchema.methods.generateToken = function () {
         id: this._id,
         role: this.role,
         username: this.username,
-    }, process.env.JWT_SECRET_KEY);
+    }, process.env.JWT_SECRET_KEY, {
+        expiresIn: "15m",
+    });
+};
+userSchema.methods.generateRefreshToken = function () {
+    return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_KEY, {
+        expiresIn: "7d",
+    });
 };
 const validateRegisterUser = (user) => {
     return RegisterSchema.safeParse(user);

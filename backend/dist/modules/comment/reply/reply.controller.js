@@ -6,6 +6,7 @@ import { Comment, validateCreateComment, validateUpdateComment, } from "../comme
 import cloudinary from "../../../utils/cloudinary.js";
 import { Post } from "../../posts/post.model.js";
 import { User } from "../../user/user.model.js";
+import Notification from "../../notifications/notifications.model.js";
 // GET ALL REPLIES
 const getAllReplies = asyncHandler(async (req, res) => {
     const parentCommentId = req.params.commentId;
@@ -118,6 +119,15 @@ const replyComment = asyncHandler(async (req, res) => {
         $inc: { commentsCount: 1 },
     });
     const finalCommentReply = await Comment.findById(newReply._id).populate("user", ["_id", "username", "fullName", "profilePicture", "jobTitle", "bio"]);
+    const currentUserId = req.user?.id;
+    if (comment.user.toString() !== currentUserId) {
+        await Notification.create({
+            recipient: comment.user,
+            sender: new Types.ObjectId(currentUserId),
+            type: "reply",
+            post: new Types.ObjectId(postId),
+        });
+    }
     res.status(201).json({
         success: true,
         data: finalCommentReply,
@@ -155,7 +165,9 @@ const updateReplyComment = asyncHandler(async (req, res) => {
         return;
     }
     const replyOwner = await User.findById(existingReply.user);
-    if (replyOwner?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (replyOwner?.role === "SuperAdmin" &&
+        existingReply.user.toString() !== req.user?.id &&
+        req.user?.role !== "SuperAdmin") {
         res.status(403).json({
             success: false,
             message: "You cannot edit a SuperAdmin's reply",
@@ -217,7 +229,9 @@ const deleteReplyComment = asyncHandler(async (req, res) => {
         return;
     }
     const replyOwner = await User.findById(replyComment.user);
-    if (replyOwner?.role === "SuperAdmin" && req.user?.role !== "SuperAdmin") {
+    if (replyOwner?.role === "SuperAdmin" &&
+        replyComment.user.toString() !== req.user?.id &&
+        req.user?.role !== "SuperAdmin") {
         res.status(403).json({
             success: false,
             message: "You cannot delete a SuperAdmin's reply",
@@ -301,6 +315,25 @@ const likeReply = asyncHandler(async (req, res) => {
         "jobTitle",
         "bio",
     ]);
+    const currentUserId = req.user?.id;
+    if (!isLiked && replyComment.user.toString() !== currentUserId) {
+        await Notification.create({
+            recipient: replyComment.user,
+            sender: new Types.ObjectId(currentUserId),
+            type: "like_reply",
+            post: new Types.ObjectId(postId),
+            comment: new Types.ObjectId(commentId),
+        });
+    }
+    else if (isLiked) {
+        await Notification.findOneAndDelete({
+            recipient: replyComment.user,
+            sender: new Types.ObjectId(currentUserId),
+            type: "like_reply",
+            post: new Types.ObjectId(postId),
+            comment: new Types.ObjectId(commentId),
+        });
+    }
     res.status(200).json({
         success: true,
         message: isLiked

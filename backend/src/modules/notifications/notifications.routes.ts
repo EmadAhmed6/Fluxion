@@ -3,13 +3,15 @@ import { verifyToken } from "../../middlewares/verifyToken.js";
 import {
   getAllNotifications,
   readNotification,
-  markAllNotificationsAsRead,
+  readAllNotifications,
 } from "./notifications.controller.js";
 const router = express.Router();
 
 router
   .route("/")
   .get(verifyToken, getAllNotifications)
-  .patch(verifyToken, markAllNotificationsAsRead);
+  .patch(verifyToken, readAllNotifications);
+
 router.patch("/:notificationId", verifyToken, readNotification);
+
 export default router;

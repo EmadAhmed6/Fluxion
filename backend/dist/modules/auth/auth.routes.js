@@ -1,23 +1,24 @@
 import express, {} from "express";
-import { register, login, sendForgotPasswodLink, resetPassword, verifyEmailOTP, resendOTP, getMe, } from "./auth.controller.js";
-import { verifyToken } from "../../middlewares/verifyToken.js";
+import { register, login, sendForgotPasswodLink, resetPassword, verifyEmailOTP, resendOTP, getMe, handleRefreshToken, logout, } from "./auth.controller.js";
+import { verifyRefreshToken, verifyToken, } from "../../middlewares/verifyToken.js";
 import { authLimiter } from "../../middlewares/limiter.js";
 import passport from "passport";
-import { User } from "../user/user.model.js";
 const router = express.Router();
 router.post("/register", register);
 router.post("/login", authLimiter, login);
+router.post("/logout", logout);
 router.post("/forgot-password", authLimiter, sendForgotPasswodLink);
 router.post("/reset-password/:userId/:token", resetPassword);
 router.post("/verify-otp", verifyEmailOTP);
 router.post("/resend-otp", authLimiter, resendOTP);
 router.get("/me", verifyToken, getMe);
+router.post("/refresh-token", verifyRefreshToken, handleRefreshToken);
 // Github OAuth
 router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
 router.get("/github/callback", passport.authenticate("github", {
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL}/auth/login?error=github_failed`,
-}), (req, res) => {
+}), async (req, res) => {
     try {
         const user = req.user;
         if (!user) {
@@ -25,6 +26,15 @@ router.get("/github/callback", passport.authenticate("github", {
             return;
         }
         const token = user.generateToken();
+        const refreshToken = user.generateRefreshToken();
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
         res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
     }
     catch (err) {

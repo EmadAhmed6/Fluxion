@@ -23,7 +23,7 @@ const getAllNotifications = asyncHandler(
 );
 
 // READ ALL NOTIFICATIONS
-const markAllNotificationsAsRead = asyncHandler(
+const readAllNotifications = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const currentUserId = req.user?.id as string;
     const updatedNotifications = await Notification.updateMany(
@@ -74,5 +74,4 @@ const readNotification = asyncHandler(
   },
 );
 
-
-export { getAllNotifications, readNotification, markAllNotificationsAsRead };
+export { getAllNotifications, readNotification, readAllNotifications };
