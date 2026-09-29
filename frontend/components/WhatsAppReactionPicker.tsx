@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Plus, X } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -88,6 +89,7 @@ export interface WhatsAppReactionPickerProps {
   selectedReaction?: string | null;
   align?: "left" | "right" | "center";
   isArabic?: boolean;
+  anchorRef?: { current: HTMLElement | null };
 }
 
 export function WhatsAppReactionPicker({
@@ -97,11 +99,47 @@ export function WhatsAppReactionPicker({
   selectedReaction,
   align = "left",
   isArabic = false,
+  anchorRef,
 }: WhatsAppReactionPickerProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isFullPickerOpen, setIsFullPickerOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 8, bottom: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Render the floating picker in the document layer so the chat scroll area
+  // cannot clip it. Keep it anchored to the reaction button while scrolling.
+  useEffect(() => {
+    if (!isOpen || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      const pickerWidth = containerRef.current?.offsetWidth || 336;
+      const rawLeft =
+        align === "right"
+          ? rect.right - pickerWidth
+          : align === "center"
+            ? rect.left + (rect.width - pickerWidth) / 2
+            : rect.left;
+      const maxLeft = Math.max(8, window.innerWidth - pickerWidth - 8);
+
+      setPosition({
+        left: Math.min(Math.max(8, rawLeft), maxLeft),
+        bottom: window.innerHeight - rect.top + 12,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, align, anchorRef]);
 
   // Close reaction picker on click outside
   useEffect(() => {
@@ -181,15 +219,7 @@ export function WhatsAppReactionPicker({
     },
   };
 
-  // Alignment classes
-  const alignClass =
-    align === "right"
-      ? "right-0 origin-bottom-right"
-      : align === "center"
-      ? "left-1/2 -translate-x-1/2 origin-bottom"
-      : "left-0 origin-bottom-left";
-
-  return (
+  return typeof document === "undefined" ? null : createPortal((
     <>
       {/* ─── Floating Reaction Pill ─── */}
       <AnimatePresence>
@@ -200,7 +230,8 @@ export function WhatsAppReactionPicker({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`absolute z-50 bottom-full mb-3 ${alignClass} flex items-center gap-1 px-2.5 py-1.5 bg-[#242526] border border-[#393a3b] rounded-full shadow-2xl shadow-black/80 backdrop-blur-md select-none`}
+            style={{ left: position.left, bottom: position.bottom }}
+            className="fixed z-[1000] flex items-center gap-1 px-2.5 py-1.5 bg-[#242526] border border-[#393a3b] rounded-full shadow-2xl shadow-black/80 backdrop-blur-md select-none origin-bottom"
           >
             {/* 6 Unicode Emoji Buttons */}
             {WHATSAPP_EMOJIS.map((item) => {
@@ -265,7 +296,7 @@ export function WhatsAppReactionPicker({
                         animate={{ opacity: 1, y: -2, scale: 1 }}
                         exit={{ opacity: 0, y: 4, scale: 0.85 }}
                         transition={{ duration: 0.12 }}
-                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-full bg-[#18191a] text-white text-[11px] font-semibold whitespace-nowrap pointer-events-none shadow-xl border border-[#393a3b] z-30"
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-full bg-[#18191a] text-white text-[11px] font-semibold whitespace-nowrap pointer-events-none shadow-xl border border-[#393a3b] z-[1001]"
                       >
                         {isArabic ? item.nameAr || item.name : item.name}
                       </motion.div>
@@ -307,7 +338,7 @@ export function WhatsAppReactionPicker({
                     animate={{ opacity: 1, y: -2, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.85 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-full bg-[#18191a] text-white text-[11px] font-semibold whitespace-nowrap pointer-events-none shadow-xl border border-[#393a3b] z-30"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-full bg-[#18191a] text-white text-[11px] font-semibold whitespace-nowrap pointer-events-none shadow-xl border border-[#393a3b] z-[1001]"
                   >
                     {isArabic ? "المزيد" : "More"}
                   </motion.div>
@@ -321,7 +352,7 @@ export function WhatsAppReactionPicker({
       {/* ─── Full Emoji Picker Modal ─── */}
       <AnimatePresence>
         {isFullPickerOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.88, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -366,5 +397,5 @@ export function WhatsAppReactionPicker({
         )}
       </AnimatePresence>
     </>
-  );
+  ), document.body);
 }

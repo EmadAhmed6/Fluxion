@@ -540,7 +540,7 @@ function ChatContent() {
                       return (
                         <div
                           key={msg._id}
-                          className={`flex items-end gap-1.5 group relative ${
+                          className={`flex items-end gap-1.5 group relative hover:z-50 focus-within:z-50 ${
                             isMe ? "justify-end" : "justify-start"
                           }`}
                         >
@@ -967,4 +967,3 @@ export default function ChatPage() {
     </Suspense>
   );
 }
-

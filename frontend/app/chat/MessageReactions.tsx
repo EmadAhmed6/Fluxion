@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useRef, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { SmilePlus } from "lucide-react";
 import { ChatMessage, ChatUser } from "@/_features/chat";
 import { useLanguage } from "@/context/LanguageContext";
@@ -133,6 +134,7 @@ export function MessageReactions({
         selectedReaction={userCurrentReaction}
         align={isMe ? "right" : "left"}
         isArabic={isArabic}
+        anchorRef={containerRef}
       />
     </div>
   );
@@ -155,6 +157,39 @@ export function ReactionBadges({
 }: ReactionBadgesProps) {
   const { t } = useLanguage();
   const [tooltipType, setTooltipType] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 118, top: 0 });
+  const tooltipAnchorRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateTooltipPosition = () => {
+    const anchor = tooltipAnchorRef.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const tooltipWidth = tooltipRef.current?.offsetWidth || 220;
+    const halfWidth = tooltipWidth / 2;
+    const center = rect.left + rect.width / 2;
+    setTooltipPosition({
+      left: Math.min(
+        Math.max(8 + halfWidth, center),
+        window.innerWidth - 8 - halfWidth,
+      ),
+      top: rect.top - 8,
+    });
+  };
+
+  useEffect(() => {
+    if (!tooltipType) return;
+
+    updateTooltipPosition();
+    window.addEventListener("resize", updateTooltipPosition);
+    window.addEventListener("scroll", updateTooltipPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateTooltipPosition);
+      window.removeEventListener("scroll", updateTooltipPosition, true);
+    };
+  }, [tooltipType]);
 
   const reactions = message.reactions || [];
 
@@ -214,6 +249,20 @@ export function ReactionBadges({
 
   if (grouped.length === 0) return null;
 
+  const activeTooltip = grouped.find((item) => item.type === tooltipType);
+
+  const showTooltip = (type: string, anchor: HTMLDivElement) => {
+    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
+    tooltipAnchorRef.current = anchor;
+    setTooltipType(type);
+    requestAnimationFrame(updateTooltipPosition);
+  };
+
+  const hideTooltip = () => {
+    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
+    tooltipHideTimerRef.current = setTimeout(() => setTooltipType(null), 120);
+  };
+
   return (
     <div
       className={`flex flex-wrap items-center gap-1.5 mt-1.5 select-none ${
@@ -224,9 +273,11 @@ export function ReactionBadges({
         return (
           <div
             key={item.type}
-            className="relative"
-            onMouseEnter={() => setTooltipType(item.type)}
-            onMouseLeave={() => setTooltipType(null)}
+            className="relative hover:z-[1000]"
+            onMouseEnter={(event) => {
+              showTooltip(item.type, event.currentTarget);
+            }}
+            onMouseLeave={hideTooltip}
           >
             <motion.button
               type="button"
@@ -250,74 +301,56 @@ export function ReactionBadges({
               {item.count > 1 && <span>{item.count}</span>}
             </motion.button>
 
-            {/* Hover Tooltip */}
-            <AnimatePresence>
-              {tooltipType === item.type && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 4 }}
-                  transition={{ duration: 0.12 }}
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2.5 rounded-2xl bg-[#18191A] text-white text-[11px] shadow-xl z-50 pointer-events-none border border-[#393A3B] min-w-[180px]"
-                >
-                  {/* User list with avatars and emoji on the far right */}
-                  <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto">
-                    {item.users.slice(0, 5).map((user, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2.5 whitespace-nowrap"
-                      >
-                        {/* Avatar */}
-                        {user.avatar ? (
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            referrerPolicy="no-referrer"
-                            className="w-7 h-7 rounded-full object-cover ring-1 ring-white/20 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 ring-1 ring-white/10">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-
-                        {/* Name and Subtext */}
-                        <div className="flex flex-col">
-                          <span
-                            className={`text-xs font-semibold truncate max-w-[110px] ${
-                              user.isSelf
-                                ? "text-white font-bold"
-                                : "text-gray-100"
-                            }`}
-                          >
-                            {user.isSelf ? "You" : user.name}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {user.isSelf ? "Click to remove" : "Reacted"}
-                          </span>
-                        </div>
-
-                        {/* Reaction Emoji on the far right */}
-                        <span
-                          className="text-base ml-auto shrink-0 leading-none"
-                          style={{ fontFamily: EMOJI_FONT }}
-                        >
-                          {item.emoji}
-                        </span>
-                      </div>
-                    ))}
-                    {item.users.length > 5 && (
-                      <span className="text-[10px] text-gray-400 text-center pt-1">
-                        +{item.users.length - 5} more
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         );
       })}
+      {activeTooltip && typeof document !== "undefined" &&
+        createPortal(
+          <motion.div
+            ref={tooltipRef}
+            initial={{ opacity: 0, scale: 0.9, y: 4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.12 }}
+            style={{ left: tooltipPosition.left, top: tooltipPosition.top }}
+            className="fixed -translate-x-1/2 -translate-y-full px-3 py-2.5 rounded-2xl bg-[#18191A] text-white text-[11px] shadow-xl z-[1001] pointer-events-none border border-[#393A3B] min-w-[180px] max-w-[calc(100vw-16px)]"
+          >
+            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto">
+              {activeTooltip.users.slice(0, 5).map((user, idx) => (
+                <div key={idx} className="flex items-center gap-2.5 whitespace-nowrap">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full object-cover ring-1 ring-white/20 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 ring-1 ring-white/10">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className={`text-xs font-semibold truncate max-w-[110px] ${user.isSelf ? "text-white font-bold" : "text-gray-100"}`}>
+                      {user.isSelf ? "You" : user.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {user.isSelf ? "Click to remove" : "Reacted"}
+                    </span>
+                  </div>
+                  <span className="text-base ml-auto shrink-0 leading-none" style={{ fontFamily: EMOJI_FONT }}>
+                    {activeTooltip.emoji}
+                  </span>
+                </div>
+              ))}
+              {activeTooltip.users.length > 5 && (
+                <span className="text-[10px] text-gray-400 text-center pt-1">
+                  +{activeTooltip.users.length - 5} more
+                </span>
+              )}
+            </div>
+          </motion.div>,
+          document.body,
+        )}
     </div>
   );
 }
