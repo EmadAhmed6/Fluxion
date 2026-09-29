@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import Cookies from "js-cookie";
 import Navbar from "@/_components/Navbar";
+
 import PostCard from "@/_components/PostCard";
 import CreatePostCard from "@/_components/CreatePostCard";
 import EditProfileModal from "@/_components/EditProfileModal";
@@ -35,6 +37,7 @@ import {
   UserCheck,
   UserPlus,
   X,
+  MessageSquare,
 } from "lucide-react";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
@@ -43,6 +46,7 @@ import FollowersModal, { FollowModalTab } from "@/_components/FollowersModal";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/_components/Text";
 import { Post } from "@/_features/posts/types/Post";
+
 import { useLanguage } from "@/context/LanguageContext";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -484,43 +488,57 @@ export default function UserProfilePage() {
                   <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
                     {/* Follow / Unfollow Button for other users */}
                     {!isOwnProfile && targetUserId && (
-                      <Button
-                        onClick={handleToggleFollow}
-                        variant={isFollowing ? "outline" : "default"}
-                        size="sm"
-                        disabled={toggleFollowMutation.isPending}
-                        onMouseEnter={() => setIsFollowHovered(true)}
-                        onMouseLeave={() => setIsFollowHovered(false)}
-                        className={`group/followBtn rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-md ${
-                          isFollowing
-                            ? isFollowHovered
-                              ? "border-rose-500/50 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white"
-                              : "border-primary/40 bg-primary/10 text-primary hover:border-primary"
-                            : "bg-primary hover:bg-primaryHover text-white shadow-primary/25"
-                        }`}
-                      >
-                        {toggleFollowMutation.isPending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : isFollowing ? (
-                          isFollowHovered ? (
-                            <>
-                              <X className="h-3.5 w-3.5" />
-                              <span>{t.profile.unfollow}</span>
-                            </>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={handleToggleFollow}
+                          variant={isFollowing ? "outline" : "default"}
+                          size="sm"
+                          disabled={toggleFollowMutation.isPending}
+                          onMouseEnter={() => setIsFollowHovered(true)}
+                          onMouseLeave={() => setIsFollowHovered(false)}
+                          className={`group/followBtn rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-md ${
+                            isFollowing
+                              ? isFollowHovered
+                                ? "border-rose-500/50 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white"
+                                : "border-primary/40 bg-primary/10 text-primary hover:border-primary"
+                              : "bg-primary hover:bg-primaryHover text-white shadow-primary/25"
+                          }`}
+                        >
+                          {toggleFollowMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : isFollowing ? (
+                            isFollowHovered ? (
+                              <>
+                                <X className="h-3.5 w-3.5" />
+                                <span>{t.profile.unfollow}</span>
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="h-3.5 w-3.5 text-primary" />
+                                <span>{t.profile.followingStatus}</span>
+                              </>
+                            )
                           ) : (
                             <>
-                              <UserCheck className="h-3.5 w-3.5 text-primary" />
-                              <span>{t.profile.followingStatus}</span>
+                              <UserPlus className="h-3.5 w-3.5" />
+                              <span>{t.profile.follow}</span>
                             </>
-                          )
-                        ) : (
-                          <>
-                            <UserPlus className="h-3.5 w-3.5" />
-                            <span>{t.profile.follow}</span>
-                          </>
-                        )}
-                      </Button>
+                          )}
+                        </Button>
+
+                        <Link href={`/chat?userId=${targetUserId}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl text-xs flex items-center gap-1.5 cursor-pointer border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all hover:scale-105 active:scale-95 shadow-xs"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                            <span>{t.chat.directMessage}</span>
+                          </Button>
+                        </Link>
+                      </div>
                     )}
+
 
                     {/* Edit Profile — hidden from admins on SuperAdmin profiles */}
                     {(isOwnProfile ||

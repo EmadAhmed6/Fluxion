@@ -13,11 +13,10 @@ import spacs from "./config/swagger.js";
 import { apiLimiter } from "./middlewares/limiter.js";
 import type { Express } from "express";
 import session from "express-session";
-import passport, { type Profile } from "passport";
-import passportGoogle from "passport-google-oauth20";
+import passport from "passport";
 import configurePassport from "./config/passport.js";
-const GoogleStrategy = passportGoogle.Strategy;
 import cookieParser from "cookie-parser";
+import chat from "./modules/chat/chat.routes.js";
 
 dotenv.config();
 const app: Express = express();
@@ -46,6 +45,7 @@ app.use("/auth", auth);
 app.use("/users", apiLimiter, users);
 app.use("/posts", apiLimiter, posts);
 app.use("/notifications", notifications);
+app.use("/chat", chat);
 
 app.use("/api-docs", swaggerui.serve, swaggerui.setup(spacs));
 

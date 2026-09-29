@@ -48,6 +48,10 @@ const options: Options = {
         name: "Notifications",
         description: "Notifications management APIs",
       },
+      {
+        name: "Chat",
+        description: "Chat & Messaging APIs",
+      },
     ],
   },
   apis: [docsPath],

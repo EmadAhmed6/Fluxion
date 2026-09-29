@@ -43,6 +43,7 @@ export interface AuthTranslations {
   enter6DigitCode: string;
   alreadyVerified: string;
   continueWithGithub: string;
+  continueWithGoogle: string;
   orDivider: string;
   loginIdentifierLabel: string;
   loginIdentifierPlaceholder: string;
@@ -95,6 +96,7 @@ export const authTranslations: Record<Language, AuthTranslations> = {
     enter6DigitCode: "Enter 6-Digit Code",
     alreadyVerified: "Already verified?",
     continueWithGithub: "Continue with GitHub",
+    continueWithGoogle: "Continue with Google",
     orDivider: "OR",
   },
   ar: {
@@ -142,6 +144,7 @@ export const authTranslations: Record<Language, AuthTranslations> = {
     enter6DigitCode: "ادخل كود الـ 6 أرقام",
     alreadyVerified: "مـتأكد بالفعل؟",
     continueWithGithub: "متابعة بواسطة GitHub",
+    continueWithGoogle: "متابعة بواسطة Google",
     orDivider: "أو",
   },
 };

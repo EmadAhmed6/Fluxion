@@ -11,6 +11,11 @@ import {
 import { profileTranslations, ProfileTranslations } from "@/app/profile/translations";
 import { adminTranslations, AdminTranslations } from "@/app/admin/translations";
 import { authTranslations, AuthTranslations } from "@/app/auth/translations";
+import {
+  chatTranslations,
+  ChatTranslations,
+} from "@/app/chat/translations";
+
 
 export interface TranslationSchema {
   nav: NavTranslations;
@@ -20,6 +25,7 @@ export interface TranslationSchema {
   profile: ProfileTranslations;
   admin: AdminTranslations;
   auth: AuthTranslations;
+  chat: ChatTranslations;
 }
 
 export const translations: Record<Language, TranslationSchema> = {
@@ -31,6 +37,7 @@ export const translations: Record<Language, TranslationSchema> = {
     profile: profileTranslations.en,
     admin: adminTranslations.en,
     auth: authTranslations.en,
+    chat: chatTranslations.en,
   },
   ar: {
     nav: navTranslations.ar,
@@ -40,5 +47,7 @@ export const translations: Record<Language, TranslationSchema> = {
     profile: profileTranslations.ar,
     admin: adminTranslations.ar,
     auth: authTranslations.ar,
+    chat: chatTranslations.ar,
   },
 };
+

@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   title: "Fluxion",
   description:
     "A secure, sleek, high-contrast, dual-language authentication suite and design system.",
+  referrer: "no-referrer",
 };
 
 export default function RootLayout({

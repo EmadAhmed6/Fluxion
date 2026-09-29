@@ -189,6 +189,35 @@
  *         description: Redirects to frontend callback page with JWT token or login error query param
  */
 
+// Google OAuth Initiate
+/**
+ * @swagger
+ * /auth/google:
+ *   get:
+ *     summary: Initiate Google OAuth 2.0 Login
+ *     description: Redirects user browser to Google OAuth authorization screen to authenticate using Google account credentials.
+ *     tags:
+ *       - Auth
+ *     responses:
+ *       302:
+ *         description: Redirects to Google authorization URL
+ */
+
+// Google OAuth Callback
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     summary: Google OAuth 2.0 Callback URL
+ *     description: Passport callback handler after Google authorization. Finds or creates DB user with provider set to 'google', generates JWT token, and redirects client to frontend /auth/callback?token=...
+ *     tags:
+ *       - Auth
+ *     responses:
+ *       302:
+ *         description: Redirects to frontend callback page with JWT token or login error query param
+ */
+
+
 // Resend OTP
 /**
  * @swagger

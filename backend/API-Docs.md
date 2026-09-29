@@ -89,6 +89,11 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 39  | GET    | `/notifications`                                                  | Retrieve all notifications for authenticated user                |  🔒  |        —         |
 | 40  | PATCH  | `/notifications`                                                  | Mark all notifications as read for authenticated user            |  🔒  |        —         |
 | 41  | PATCH  | `/notifications/:notificationId`                                  | Mark a specific notification as read                             |  🔒  |        —         |
+| 42  | GET    | `/chat/conversations`                                             | Retrieve all chat conversations for authenticated user           |  🔒  |        —         |
+| 43  | POST   | `/chat/send/:recipientId`                                         | Send a message with optional image to a user                     |  🔒  |        —         |
+| 44  | GET    | `/chat/:userId`                                                   | Retrieve message history with a user and mark as read            |  🔒  |        —         |
+| 45  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
+| 46  | DELETE | `/chat/:messageId`                                                | Soft delete a chat message (Sender Only)                         |  🔒  |        —         |
 
 ---
 
@@ -100,6 +105,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 - [Post Management Endpoints](#post-management-endpoints)
 - [Comment Management Endpoints](#comment-management-endpoints)
 - [Notification Management Endpoints](#notification-management-endpoints)
+- [Chat Management Endpoints](#chat-management-endpoints)
 - [Common HTTP Status Codes](#common-http-status-codes)
 
 ---
@@ -2453,6 +2459,306 @@ Notification was not found.
   }
 }
 ```
+
+---
+
+## Chat Management Endpoints
+
+### GET /chat/conversations 🔒
+Retrieve all conversations for the authenticated user, ordered by the most recent message, with interlocutor profile details and unread messages count.
+
+#### Responses
+
+##### Response 200
+List of conversations retrieved successfully.
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "user": {
+        "_id": "65f1a2b3c4d5e6f789012341",
+        "username": "ahmed",
+        "fullName": "Ahmed Mohamed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
+          "publicId": "avatar_123"
+        },
+        "role": "user"
+      },
+      "lastMessage": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "sender": "65f1a2b3c4d5e6f789012341",
+        "recipient": "65f1a2b3c4d5e6f789012340",
+        "message": "Hey, did you see the new post?",
+        "imageUrl": null,
+        "isDeleted": false,
+        "isRead": false,
+        "createdAt": "2026-09-29T14:30:00.000Z",
+        "updatedAt": "2026-09-29T14:30:00.000Z"
+      },
+      "unreadCount": 1
+    }
+  ]
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### POST /chat/send/:recipientId 🔒
+Send a chat message with an optional image attachment to another user. If an image is attached without text, the message defaults to `"📷 Photo"`.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `recipientId` | string | ✅ | MongoDB ObjectId of the recipient user. |
+
+#### Request Body (`multipart/form-data`)
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `message` | string | ❌* | Message text (*required if no image attachment is provided). |
+| `messageImage` | file | ❌* | Image file attachment (*required if no text message is provided). |
+
+#### Responses
+
+##### Response 201
+Message sent successfully.
+```json
+{
+  "success": true,
+  "message": "Message sent successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012399",
+    "sender": {
+      "_id": "65f1a2b3c4d5e6f789012340",
+      "username": "emad",
+      "fullName": "Emad Ahmed",
+      "profilePicture": {
+        "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
+        "publicId": "avatar_456"
+      },
+      "role": "user"
+    },
+    "recipient": {
+      "_id": "65f1a2b3c4d5e6f789012341",
+      "username": "ahmed",
+      "fullName": "Ahmed Mohamed",
+      "profilePicture": {
+        "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
+        "publicId": "avatar_123"
+      },
+      "role": "user"
+    },
+    "message": "Hey, did you see the new post?",
+    "imageUrl": "https://res.cloudinary.com/example/image/upload/chat_img.jpg",
+    "isDeleted": false,
+    "isRead": false,
+    "createdAt": "2026-09-29T14:30:00.000Z",
+    "updatedAt": "2026-09-29T14:30:00.000Z"
+  }
+}
+```
+
+##### Response 400
+Missing required fields.
+```json
+{
+  "success": false,
+  "message": "Message or image is required"
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### GET /chat/:userId 🔒
+Retrieve all chat messages exchanged between the authenticated user and the specified user, sorted in chronological order (`createdAt: 1`). Any unread incoming messages from this user are automatically marked as read (`isRead: true`).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `userId` | string | ✅ | MongoDB ObjectId of the conversation partner. |
+
+#### Responses
+
+##### Response 200
+Messages retrieved successfully.
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012398",
+      "sender": {
+        "_id": "65f1a2b3c4d5e6f789012340",
+        "username": "emad",
+        "fullName": "Emad Ahmed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
+          "publicId": "avatar_456"
+        },
+        "role": "user"
+      },
+      "recipient": {
+        "_id": "65f1a2b3c4d5e6f789012341",
+        "username": "ahmed",
+        "fullName": "Ahmed Mohamed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
+          "publicId": "avatar_123"
+        },
+        "role": "user"
+      },
+      "message": "Hello Ahmed!",
+      "imageUrl": null,
+      "isDeleted": false,
+      "isRead": true,
+      "createdAt": "2026-09-29T14:25:00.000Z",
+      "updatedAt": "2026-09-29T14:25:00.000Z"
+    },
+    {
+      "_id": "65f1a2b3c4d5e6f789012399",
+      "sender": {
+        "_id": "65f1a2b3c4d5e6f789012341",
+        "username": "ahmed",
+        "fullName": "Ahmed Mohamed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
+          "publicId": "avatar_123"
+        },
+        "role": "user"
+      },
+      "recipient": {
+        "_id": "65f1a2b3c4d5e6f789012340",
+        "username": "emad",
+        "fullName": "Emad Ahmed",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
+          "publicId": "avatar_456"
+        },
+        "role": "user"
+      },
+      "message": "Hey Emad! How's it going?",
+      "imageUrl": null,
+      "isDeleted": false,
+      "isRead": true,
+      "createdAt": "2026-09-29T14:26:00.000Z",
+      "updatedAt": "2026-09-29T14:30:00.000Z"
+    }
+  ]
+}
+```
+
+##### Response 400
+Invalid user ID.
+```json
+{
+  "success": false,
+  "message": "Valid userId is required"
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### PATCH /chat/:userId/read 🔒
+Mark all unread incoming messages from the specified user as read.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `userId` | string | ✅ | MongoDB ObjectId of the sender whose messages should be marked as read. |
+
+#### Responses
+
+##### Response 200
+Messages marked as read successfully.
+```json
+{
+  "success": true,
+  "message": "Messages marked as read"
+}
+```
+
+##### Response 400
+Invalid user ID.
+```json
+{
+  "success": false,
+  "message": "Valid userId is required"
+}
+```
+
+##### Response 401
+Not authorized.
+
+---
+
+### DELETE /chat/:messageId 🔒
+Soft-delete a chat message (sets `isDeleted: true`). Only the sender of the message is permitted to delete it.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `messageId` | string | ✅ | MongoDB ObjectId of the message to delete. |
+
+#### Responses
+
+##### Response 200
+Message deleted successfully.
+```json
+{
+  "success": true,
+  "message": "Message deleted successfully"
+}
+```
+
+##### Response 400
+Message was not found.
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "Message was not found"
+  }
+}
+```
+
+##### Response 403
+Forbidden - not the sender of the message.
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "You are not authorized to delete this message"
+  }
+}
+```
+
+##### Response 404
+Message ID not provided.
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "Valid message Id is required"
+  }
+}
+```
+
+##### Response 401
+Not authorized.
 
 ---
 

@@ -61,12 +61,57 @@ router.get(
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+      res.redirect(
+        `${process.env.FRONTEND_URL}/auth/callback?token=${token}&provider=github`,
+      );
     } catch (err) {
       res.redirect(`${process.env.FRONTEND_URL}/auth/login?error=auth_failed`);
     }
   },
 );
+
+// Google OAuth
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] }),
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL}/auth/login?error=google_failed`,
+  }),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user) {
+        res.redirect(
+          `${process.env.FRONTEND_URL}/auth/login?error=user_not_found`,
+        );
+        return;
+      }
+      const token = user.generateToken();
+      const refreshToken = user.generateRefreshToken();
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.redirect(
+        `${process.env.FRONTEND_URL}/auth/callback?token=${token}&provider=google`,
+      );
+    } catch (err) {
+      res.redirect(`${process.env.FRONTEND_URL}/auth/login?error=auth_failed`);
+    }
+  },
+);
+
 
 router.get("/current-user", (req: Request, res: Response) => {
   if (req.isAuthenticated()) {

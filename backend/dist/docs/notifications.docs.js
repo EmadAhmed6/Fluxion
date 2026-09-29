@@ -44,7 +44,7 @@ export {};
  * /notifications:
  *   patch:
  *     summary: Mark all notifications as read
- *     description: Mark all notifications for the authenticated user as read (`isRead: true`).
+ *     description: Mark all notifications for the authenticated user as read (isRead set to true).
  *     tags:
  *       - Notifications
  *     security:
@@ -90,7 +90,7 @@ export {};
  * /notifications/{notificationId}:
  *   patch:
  *     summary: Mark a single notification as read
- *     description: Update a single notification by its ID to mark it as read (`isRead: true`). Only the recipient can mark it as read.
+ *     description: Update a single notification by its ID to mark it as read (isRead set to true). Only the recipient can mark it as read.
  *     tags:
  *       - Notifications
  *     security:

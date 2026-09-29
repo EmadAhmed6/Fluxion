@@ -31,6 +31,7 @@ export interface NavTranslations {
   notifLikeReply: string;
   viewPost: string;
   viewProfile: string;
+  messages: string;
 }
 
 export const navTranslations: Record<Language, NavTranslations> = {
@@ -65,6 +66,7 @@ export const navTranslations: Record<Language, NavTranslations> = {
     notifLikeReply: "liked your reply",
     viewPost: "View Post",
     viewProfile: "View Profile",
+    messages: "Messages",
   },
   ar: {
     searchPlaceholder: "ابحث عن مستخدم بالاسم أو اليوزر نيم...",
@@ -97,7 +99,9 @@ export const navTranslations: Record<Language, NavTranslations> = {
     notifLikeReply: "عمل لايك على ردك",
     viewPost: "عرض البوست",
     viewProfile: "عرض البروفايل",
+    messages: "الرسائل",
   },
 };
+
 
 

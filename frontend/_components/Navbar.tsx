@@ -16,10 +16,12 @@ import {
   Menu,
   X,
   Crown,
+  MessageSquare,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { useGetAuthMeQuery, useLogout } from "@/_features/auth/hooks";
 import { useGetAllUsers } from "@/_features/user/hooks";
+import { useGetConversations } from "@/_features/chat";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/_components/Text";
 import Tooltip from "@/_components/Tooltip";
@@ -44,8 +46,19 @@ const Navbar = () => {
   const token = Cookies.get("token");
   const { data: user } = useGetAuthMeQuery();
   const { data: allUsers } = useGetAllUsers();
+  const { data: chatConversations } = useGetConversations();
+
+  const totalUnreadMessages = React.useMemo(() => {
+    if (!Array.isArray(chatConversations)) return 0;
+    return chatConversations.reduce(
+      (acc, curr) => acc + (curr.unreadCount || 0),
+      0,
+    );
+  }, [chatConversations]);
+
   const logout = useLogout();
   const router = useRouter();
+
 
   useEffect(() => {
     setMounted(true);
@@ -242,6 +255,7 @@ const Navbar = () => {
                     <img
                       src={u.profilePicture.url}
                       alt={displayName}
+                      referrerPolicy="no-referrer"
                       className="h-8 w-8 rounded-full object-cover border border-borderPrimary shrink-0 group-hover:scale-105 transition-transform"
                     />
                   ) : (
@@ -419,9 +433,29 @@ const Navbar = () => {
           {/* Notifications Dropdown */}
           {mounted && token && <NotificationDropdown />}
 
+          {/* Messages / Chat Link */}
+          {mounted && token && (
+            <Tooltip position="bottom" content={t.nav.messages}>
+              <Link href="/chat">
+                <button
+                  className="relative p-2 rounded-xl bg-bgSecondary/60 hover:bg-bgSecondary border border-borderPrimary/40 text-textSecondary hover:text-textPrimary transition-all cursor-pointer"
+                  aria-label="Messages"
+                >
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  {totalUnreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-primary text-white text-[9px] font-extrabold flex items-center justify-center animate-pulse shadow-xs">
+                      {totalUnreadMessages > 9 ? "9+" : totalUnreadMessages}
+                    </span>
+                  )}
+                </button>
+              </Link>
+            </Tooltip>
+          )}
+
           {/* User Dropdown / Auth Links */}
           {mounted &&
             (token ? (
+
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -433,6 +467,7 @@ const Navbar = () => {
                     <img
                       src={user.profilePicture.url}
                       alt={user.fullName || "User Avatar"}
+                      referrerPolicy="no-referrer"
                       className="h-8 w-8 rounded-full object-cover ring-2 ring-primary/20"
                     />
                   ) : (
@@ -658,14 +693,32 @@ const Navbar = () => {
           {token ? (
             <div className="pt-2 border-t border-borderPrimary/40 space-y-2">
               <Link
+                href="/chat"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-2.5 rounded-xl bg-bgSecondary/60 hover:bg-bgSecondary text-xs font-semibold text-textPrimary transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <span>{t.nav.messages}</span>
+                </div>
+                {totalUnreadMessages > 0 && (
+                  <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                    {totalUnreadMessages}
+                  </span>
+                )}
+              </Link>
+
+              <Link
                 href={`/profile/${user?._id || "me"}`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-3 p-2.5 rounded-xl bg-bgSecondary/60 hover:bg-bgSecondary text-xs font-semibold text-textPrimary transition-colors"
               >
+
                 {user?.profilePicture?.url ? (
                   <img
                     src={user.profilePicture.url}
                     alt={user.username}
+                    referrerPolicy="no-referrer"
                     className="h-7 w-7 rounded-lg object-cover"
                   />
                 ) : (

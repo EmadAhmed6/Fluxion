@@ -10,7 +10,9 @@ import {
   Loader2,
   Edit,
   Crown,
+  MessageSquare,
 } from "lucide-react";
+
 import Tooltip, { TooltipPosition } from "./Tooltip";
 import { Text } from "./Text";
 import { useGetAuthMeQuery } from "@/_features/auth/hooks";
@@ -186,16 +188,27 @@ export default function UserHoverCard({
         </div>
       )}
 
-      <div className="pt-1.5 text-right border-t border-borderPrimary/20">
+      <div className="pt-1.5 flex items-center justify-between border-t border-borderPrimary/20">
+        {currentUser?._id !== user._id && (
+          <Link
+            href={`/chat?userId=${user._id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+          >
+            <MessageSquare className="h-3 w-3" />
+            <span>{t.chat.directMessage}</span>
+          </Link>
+        )}
         <Link
           href={`/profile/${user._id}`}
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-textSecondary hover:text-primary transition-colors cursor-pointer"
         >
           <span>{t.profile.viewProfile}</span>
           <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
+
     </div>
   );
 
