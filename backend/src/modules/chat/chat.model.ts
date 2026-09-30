@@ -10,6 +10,7 @@ export interface IChat {
   recipient: Types.ObjectId;
   message: string;
   imageUrl?: string;
+  replyTo?: Types.ObjectId;
   isDeleted: boolean;
   isRead: boolean;
   isEdited?: boolean;
@@ -36,6 +37,10 @@ const ChatSchema = new Schema(
     },
     imageUrl: {
       type: String,
+    },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chat",
     },
     isDeleted: {
       type: Boolean,

@@ -5,6 +5,7 @@ import cloudinary from "../../utils/cloudinary.js";
 import fs from "fs";
 import { Types } from "mongoose";
 
+// SEND MESSAGE
 const sendMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const recipientId = req.params.recipientId;
@@ -53,6 +54,7 @@ const sendMessage = asyncHandler(
   },
 );
 
+// EDIT MESSAGE
 const editMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const messageId = req.params.messageId;
@@ -77,6 +79,7 @@ const editMessage = asyncHandler(
       });
       return;
     }
+
     if (message.sender.toString() !== currentUserId) {
       res.status(403).json({
         success: false,
@@ -85,6 +88,7 @@ const editMessage = asyncHandler(
       });
       return;
     }
+
     if (!newMessage || newMessage.trim() === "") {
       res.status(400).json({
         success: false,
@@ -111,6 +115,7 @@ const editMessage = asyncHandler(
   },
 );
 
+// GET CONVERSATIONS
 const getConversations = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const currentUserId = req.user?.id;
@@ -162,6 +167,7 @@ const getConversations = asyncHandler(
   },
 );
 
+// GET MESSAGES
 const getMessages = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.params.userId;
@@ -172,6 +178,7 @@ const getMessages = asyncHandler(
         .json({ success: false, message: "Valid userId is required" });
       return;
     }
+
     const messages = await Chat.find({
       $or: [
         { sender: currentUserId, recipient: userId },
@@ -196,6 +203,7 @@ const getMessages = asyncHandler(
   },
 );
 
+// MARK AS READ
 const markAsRead = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.params.userId;
@@ -219,6 +227,83 @@ const markAsRead = asyncHandler(
   },
 );
 
+// REPLY MESSAGE
+const replyMessage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const messageId = req.params.messageId;
+    const recipientId = req.params.recipientId;
+    const senderId = req.user?.id;
+    const message = req.body.message;
+    
+    if (!recipientId || !senderId) {
+      res.status(400).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "Valid userId is required" },
+      });
+      return;
+    }
+    if (!message || message.trim() === "") {
+      res.status(400).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "Valid message is required" },
+      });
+      return;
+    }
+
+    const parentMessage = await Chat.findById(messageId);
+    if (!parentMessage) {
+      res.status(404).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "Message was not found" },
+      });
+      return;
+    }
+    let imageUrl: string | undefined = undefined;
+    if (req.file) {
+      try {
+        let result = await cloudinary.uploader.upload(req.file.path);
+        imageUrl = result.secure_url;
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (err) {
+        res.status(500).json({
+          success: false,
+          message: "Request failed",
+          data: { message: "Something went wrong! Please try again later." },
+        });
+        return;
+      }
+    }
+
+    const newReplyMessage = new Chat({
+      sender: senderId,
+      recipient: recipientId,
+      message: message,
+      imageUrl: imageUrl,
+      replyTo: messageId,
+    });
+
+    await newReplyMessage.save();
+
+    const populatedReply = await Chat.findById(newReplyMessage._id)
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate("replyTo", "username fullName profilePicture");
+
+    res.status(201).json({
+      success: true,
+      message: "Reply sent successfully",
+      data: populatedReply,
+    });
+  },
+);
+
+// DELETE MESSAGE
 const deleteMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const messageId = req.params.messageId;
@@ -262,6 +347,7 @@ const deleteMessage = asyncHandler(
   },
 );
 
+// REACT MESSAGE
 const reactMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const messageId = req.params.messageId;
@@ -319,6 +405,7 @@ const reactMessage = asyncHandler(
         type: reactionType,
       });
     }
+
     await message.save();
     const updatedMessage = await Chat.findById(message._id)
       .populate("sender", "username fullName profilePicture role")
