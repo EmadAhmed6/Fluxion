@@ -12,10 +12,21 @@ const errorHandler = (
   next: NextFunction,
 ) => {
   if (err.name === "CastError") {
-    return res.status(400).json({ message: `Invalid ${err.path || "ID format"}: ${err.value}` });
+    return res
+      .status(400)
+      .json({ message: `Invalid ${err.path || "ID format"}: ${err.value}` });
   }
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   return res.status(statusCode).json({ message: err.message });
 };
 
-export { notFound, errorHandler };
+const sendError = (res: Response, statusCode: number, errorMessage: string) => {
+  return res
+    .status(statusCode)
+    .json({
+      success: false,
+      message: "Request failed",
+      data: { message: errorMessage },
+    });
+};
+export { notFound, errorHandler, sendError };

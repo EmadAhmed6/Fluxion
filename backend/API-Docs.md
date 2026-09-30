@@ -20,10 +20,12 @@ The API is deployed locally and can be accessed at:
     "data": { ... }
   }
   ```
-- **Error Responses**: Return a standard error JSON object with a `message` field describing the issue (and optional `success: false`).
+- **Error Responses**: Most validation and authorization errors use the `sendError` envelope below. Legacy handlers and Express-level errors may return a top-level `message` instead.
   ```json
   {
-    "message": "Error details and description go here"
+    "success": false,
+    "message": "Request failed",
+    "data": { "message": "Error details and description go here" }
   }
   ```
 
@@ -41,6 +43,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 
 - **Auth Limiter (`/auth/login`, `/auth/forgot-password`, `/auth/resend-otp`)**: Restricted to **10 requests per minute** to prevent brute-force attacks while allowing standard user interactions.
 - **API Limiter (`/users/*`, `/posts/*`)**: Restricted to **100 requests per 15 minutes** to ensure server availability and protection against denial-of-service attempts.
+- **Upload Limit**: Multer rejects uploaded files larger than **100 MiB**.
 
 ---
 
@@ -89,11 +92,16 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 39  | GET    | `/notifications`                                                  | Retrieve all notifications for authenticated user                |  🔒  |        —         |
 | 40  | PATCH  | `/notifications`                                                  | Mark all notifications as read for authenticated user            |  🔒  |        —         |
 | 41  | PATCH  | `/notifications/:notificationId`                                  | Mark a specific notification as read                             |  🔒  |        —         |
-| 42  | GET    | `/chat/conversations`                                             | Retrieve all chat conversations for authenticated user           |  🔒  |        —         |
-| 43  | POST   | `/chat/send/:recipientId`                                         | Send a message with optional image to a user                     |  🔒  |        —         |
-| 44  | GET    | `/chat/:userId`                                                   | Retrieve message history with a user and mark as read            |  🔒  |        —         |
-| 45  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
-| 46  | DELETE | `/chat/:messageId`                                                | Soft delete a chat message (Sender Only)                         |  🔒  |        —         |
+| 42  | GET    | `/chat/conversations`                                             | Retrieve conversations, latest message, and unread counts        |  🔒  |        —         |
+| 43  | POST   | `/chat/:recipientId/send`                                         | Send text with an optional image or file attachment               |  🔒  |        —         |
+| 44  | POST   | `/chat/:recipientId/audio`                                        | Send a voice message, optionally as a reply                       |  🔒  |        —         |
+| 45  | POST   | `/chat/:recipientId/:messageId/reply`                             | Reply with text and/or an optional file                            |  🔒  |        —         |
+| 46  | POST   | `/chat/:recipientId/:messageId/forward`                           | Forward an existing message to another user                       |  🔒  |        —         |
+| 47  | GET    | `/chat/:userId`                                                   | Retrieve conversation history and mark incoming messages read    |  🔒  |        —         |
+| 48  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
+| 49  | PATCH  | `/chat/:messageId/react`                                          | Add, change, or remove a reaction on a message                    |  🔒  |        —         |
+| 50  | PATCH  | `/chat/:messageId`                                                | Edit a message's text (sender only)                               |  🔒  |        —         |
+| 51  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
 
 ---
 
@@ -2464,301 +2472,280 @@ Notification was not found.
 
 ## Chat Management Endpoints
 
-### GET /chat/conversations 🔒
-Retrieve all conversations for the authenticated user, ordered by the most recent message, with interlocutor profile details and unread messages count.
+All chat endpoints require a valid access token in the Authorization header. Chat routes do not use the users/posts API rate limiter. Multipart uploads are limited to 100 MiB.
 
-#### Responses
+Chat error responses created with sendError use this envelope:
 
-##### Response 200
-List of conversations retrieved successfully.
-```json
-{
-  "success": true,
-  "data": [
     {
-      "user": {
-        "_id": "65f1a2b3c4d5e6f789012341",
-        "username": "ahmed",
-        "fullName": "Ahmed Mohamed",
-        "profilePicture": {
-          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
-          "publicId": "avatar_123"
-        },
-        "role": "user"
-      },
-      "lastMessage": {
-        "_id": "65f1a2b3c4d5e6f789012399",
-        "sender": "65f1a2b3c4d5e6f789012341",
-        "recipient": "65f1a2b3c4d5e6f789012340",
-        "message": "Hey, did you see the new post?",
-        "imageUrl": null,
-        "isDeleted": false,
-        "isRead": false,
-        "createdAt": "2026-09-29T14:30:00.000Z",
-        "updatedAt": "2026-09-29T14:30:00.000Z"
-      },
-      "unreadCount": 1
+      "success": false,
+      "message": "Request failed",
+      "data": { "message": "Description of the error" }
     }
-  ]
-}
-```
 
-##### Response 401
-Not authorized.
+### GET /chat/conversations 🔒
 
----
+Return one conversation entry per chat partner. Conversations are ordered by the most recent non-deleted message and include the interlocutor, last message, and unread incoming-message count.
 
-### POST /chat/send/:recipientId 🔒
-Send a chat message with an optional image attachment to another user. If an image is attached without text, the message defaults to `"📷 Photo"`.
+Response 200:
 
-#### Path Parameters
+    {
+      "success": true,
+      "data": [
+        {
+          "user": {
+            "_id": "65f1a2b3c4d5e6f789012341",
+            "username": "ahmed",
+            "fullName": "Ahmed Mohamed",
+            "profilePicture": { "url": "https://example.com/avatar.jpg" },
+            "role": "user"
+          },
+          "lastMessage": {
+            "_id": "65f1a2b3c4d5e6f789012399",
+            "sender": {
+              "_id": "65f1a2b3c4d5e6f789012340",
+              "username": "emad",
+              "fullName": "Emad Ahmed"
+            },
+            "recipient": {
+              "_id": "65f1a2b3c4d5e6f789012341",
+              "username": "ahmed",
+              "fullName": "Ahmed Mohamed"
+            },
+            "message": "",
+            "imageUrl": "",
+            "fileUrl": "",
+            "fileName": "",
+            "audioUrl": "https://example.com/voice.webm",
+            "isDeleted": false,
+            "isRead": false,
+            "createdAt": "2026-09-29T14:30:00.000Z",
+            "updatedAt": "2026-09-29T14:30:00.000Z"
+          },
+          "unreadCount": 1
+        }
+      ]
+    }
+
+Response 401: The access token is missing or invalid.
+
+### POST /chat/:recipientId/send 🔒
+
+Send a text message, a file with optional text, or both. Supports JSON for text-only messages and multipart/form-data when attaching a file. The uploaded field name is file. Images are stored in imageUrl; non-image attachments are stored in fileUrl and fileName.
+
+Path parameter:
+
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `recipientId` | string | ✅ | MongoDB ObjectId of the recipient user. |
+| recipientId | string | Yes | MongoDB ObjectId of the recipient. |
 
-#### Request Body (`multipart/form-data`)
+Request fields:
+
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `message` | string | ❌* | Message text (*required if no image attachment is provided). |
-| `messageImage` | file | ❌* | Image file attachment (*required if no text message is provided). |
+| message | string | No* | Message text. Required when no file is supplied. |
+| file | file | No* | Optional image or other file, up to 100 MiB. Required when message is empty. |
 
-#### Responses
+Response 201:
 
-##### Response 201
-Message sent successfully.
-```json
-{
-  "success": true,
-  "message": "Message sent successfully",
-  "data": {
-    "_id": "65f1a2b3c4d5e6f789012399",
-    "sender": {
-      "_id": "65f1a2b3c4d5e6f789012340",
-      "username": "emad",
-      "fullName": "Emad Ahmed",
-      "profilePicture": {
-        "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
-        "publicId": "avatar_456"
-      },
-      "role": "user"
-    },
-    "recipient": {
-      "_id": "65f1a2b3c4d5e6f789012341",
-      "username": "ahmed",
-      "fullName": "Ahmed Mohamed",
-      "profilePicture": {
-        "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
-        "publicId": "avatar_123"
-      },
-      "role": "user"
-    },
-    "message": "Hey, did you see the new post?",
-    "imageUrl": "https://res.cloudinary.com/example/image/upload/chat_img.jpg",
-    "isDeleted": false,
-    "isRead": false,
-    "createdAt": "2026-09-29T14:30:00.000Z",
-    "updatedAt": "2026-09-29T14:30:00.000Z"
-  }
-}
-```
+    {
+      "success": true,
+      "message": "Message sent successfully",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "sender": { "_id": "65f1a2b3c4d5e6f789012340", "username": "emad" },
+        "recipient": { "_id": "65f1a2b3c4d5e6f789012341", "username": "ahmed" },
+        "message": "Please review this file",
+        "imageUrl": "",
+        "fileUrl": "https://example.com/report.pdf",
+        "fileName": "report.pdf",
+        "audioUrl": "",
+        "replyTo": null,
+        "isDeleted": false,
+        "isRead": false,
+        "isEdited": false,
+        "isForwarded": false,
+        "reactions": [],
+        "createdAt": "2026-09-29T14:30:00.000Z",
+        "updatedAt": "2026-09-29T14:30:00.000Z"
+      }
+    }
 
-##### Response 400
-Missing required fields.
-```json
-{
-  "success": false,
-  "message": "Message or image is required"
-}
-```
+Response 400: Message or file is required.
 
-##### Response 401
-Not authorized.
+### POST /chat/:recipientId/audio 🔒
 
----
+Upload and send a voice message. The audio file is stored in audioUrl. An optional replyTo field associates the voice message with an existing message.
+
+Path parameter: recipientId is the recipient user's MongoDB ObjectId.
+
+Request body (multipart/form-data):
+
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| audio | file | Yes | Recorded audio file, up to 100 MiB. |
+| replyTo | string | No | MongoDB ObjectId of the message being replied to. |
+
+Response 201: Returns the new ChatMessage in data, with sender and recipient populated and replyTo populated when supplied.
+
+Responses:
+- 404: Audio file is missing or the reply target was not found.
+- 500: Cloud media upload failed.
+- 401: The access token is missing or invalid.
+
+### POST /chat/:recipientId/:messageId/reply 🔒
+
+Reply to an existing message with text, a file, or both. The uploaded field name is file. Images populate imageUrl; other file types populate fileUrl and fileName. The returned replyTo field contains the original message populated with its sender.
+
+Path parameters:
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| recipientId | string | Yes | MongoDB ObjectId of the recipient. |
+| messageId | string | Yes | MongoDB ObjectId of the message being replied to. |
+
+Request body (multipart/form-data):
+
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| message | string | No* | Reply text. Required when no file is supplied. |
+| file | file | No* | Optional image or other file, up to 100 MiB. Required when message is empty. |
+
+Response 201: Returns the created reply as data.
+
+Responses:
+- 400: Recipient or reply content is missing.
+- 404: The original message was not found.
+- 500: Attachment upload failed.
+- 401: The access token is missing or invalid.
+
+### POST /chat/:recipientId/:messageId/forward 🔒
+
+Forward an existing message to another user. Creates a new message that copies the original message text and media URLs and sets isForwarded to true. No request body is required.
+
+Path parameters:
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| recipientId | string | Yes | MongoDB ObjectId of the new recipient. |
+| messageId | string | Yes | MongoDB ObjectId of the message to forward. |
+
+Response 201: Returns the forwarded ChatMessage as data.
+
+Responses:
+- 400: Recipient or message ID is missing.
+- 404: The original message was not found.
+- 401: The access token is missing or invalid.
 
 ### GET /chat/:userId 🔒
-Retrieve all chat messages exchanged between the authenticated user and the specified user, sorted in chronological order (`createdAt: 1`). Any unread incoming messages from this user are automatically marked as read (`isRead: true`).
 
-#### Path Parameters
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| `userId` | string | ✅ | MongoDB ObjectId of the conversation partner. |
+Retrieve messages exchanged with the specified user, sorted oldest to newest. Sender, recipient, reaction users, and reply target (including its sender) are populated. Incoming unread messages from the user are marked as read.
 
-#### Responses
+Path parameter: userId is the conversation partner's MongoDB ObjectId.
 
-##### Response 200
-Messages retrieved successfully.
-```json
-{
-  "success": true,
-  "count": 2,
-  "data": [
+Response 200:
+
     {
-      "_id": "65f1a2b3c4d5e6f789012398",
-      "sender": {
-        "_id": "65f1a2b3c4d5e6f789012340",
-        "username": "emad",
-        "fullName": "Emad Ahmed",
-        "profilePicture": {
-          "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
-          "publicId": "avatar_456"
-        },
-        "role": "user"
-      },
-      "recipient": {
-        "_id": "65f1a2b3c4d5e6f789012341",
-        "username": "ahmed",
-        "fullName": "Ahmed Mohamed",
-        "profilePicture": {
-          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
-          "publicId": "avatar_123"
-        },
-        "role": "user"
-      },
-      "message": "Hello Ahmed!",
-      "imageUrl": null,
-      "isDeleted": false,
-      "isRead": true,
-      "createdAt": "2026-09-29T14:25:00.000Z",
-      "updatedAt": "2026-09-29T14:25:00.000Z"
-    },
-    {
-      "_id": "65f1a2b3c4d5e6f789012399",
-      "sender": {
-        "_id": "65f1a2b3c4d5e6f789012341",
-        "username": "ahmed",
-        "fullName": "Ahmed Mohamed",
-        "profilePicture": {
-          "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg",
-          "publicId": "avatar_123"
-        },
-        "role": "user"
-      },
-      "recipient": {
-        "_id": "65f1a2b3c4d5e6f789012340",
-        "username": "emad",
-        "fullName": "Emad Ahmed",
-        "profilePicture": {
-          "url": "https://res.cloudinary.com/example/image/upload/emad.jpg",
-          "publicId": "avatar_456"
-        },
-        "role": "user"
-      },
-      "message": "Hey Emad! How's it going?",
-      "imageUrl": null,
-      "isDeleted": false,
-      "isRead": true,
-      "createdAt": "2026-09-29T14:26:00.000Z",
-      "updatedAt": "2026-09-29T14:30:00.000Z"
+      "success": true,
+      "count": 1,
+      "data": [
+        {
+          "_id": "65f1a2b3c4d5e6f789012399",
+          "sender": { "_id": "65f1a2b3c4d5e6f789012340", "username": "emad" },
+          "recipient": { "_id": "65f1a2b3c4d5e6f789012341", "username": "ahmed" },
+          "message": "",
+          "imageUrl": "",
+          "fileUrl": "",
+          "fileName": "",
+          "audioUrl": "https://example.com/voice.webm",
+          "replyTo": null,
+          "reactions": [],
+          "isDeleted": false,
+          "isRead": true,
+          "isEdited": false,
+          "isForwarded": false,
+          "createdAt": "2026-09-29T14:30:00.000Z",
+          "updatedAt": "2026-09-29T14:30:00.000Z"
+        }
+      ]
     }
-  ]
-}
-```
 
-##### Response 400
-Invalid user ID.
-```json
-{
-  "success": false,
-  "message": "Valid userId is required"
-}
-```
-
-##### Response 401
-Not authorized.
-
----
+Responses:
+- 400: userId is missing or invalid.
+- 401: The access token is missing or invalid.
 
 ### PATCH /chat/:userId/read 🔒
-Mark all unread incoming messages from the specified user as read.
 
-#### Path Parameters
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| `userId` | string | ✅ | MongoDB ObjectId of the sender whose messages should be marked as read. |
+Mark all unread incoming messages from userId as read.
 
-#### Responses
+Response 200:
 
-##### Response 200
-Messages marked as read successfully.
-```json
-{
-  "success": true,
-  "message": "Messages marked as read"
-}
-```
+    {
+      "success": true,
+      "message": "Messages marked as read"
+    }
 
-##### Response 400
-Invalid user ID.
-```json
-{
-  "success": false,
-  "message": "Valid userId is required"
-}
-```
+Responses:
+- 400: userId is missing or invalid.
+- 401: The access token is missing or invalid.
 
-##### Response 401
-Not authorized.
+### PATCH /chat/:messageId/react 🔒
 
----
+Add a reaction from the authenticated user, change their existing reaction, or remove it by sending the same reaction again.
+
+Path parameter: messageId is the MongoDB ObjectId of the message.
+
+Request body (application/json):
+
+    {
+      "reactionType": "love"
+    }
+
+The chat UI currently uses these reactionType values: like, love, care, haha, wow, sad, angry, eggs. The endpoint stores the supplied reactionType string.
+
+Response 200: Returns the updated ChatMessage in data, with reaction users populated.
+
+Responses:
+- 400: messageId or reactionType is missing.
+- 403: The authenticated user is not a sender or recipient of the message.
+- 404: The message was not found.
+- 401: The access token is missing or invalid.
+
+### PATCH /chat/:messageId 🔒
+
+Edit the text of a message sent by the authenticated user. This endpoint does not edit attachments.
+
+Path parameter: messageId is the MongoDB ObjectId of the message.
+
+Request body (application/json):
+
+    {
+      "message": "Updated message text"
+    }
+
+Response 200: Returns the updated ChatMessage in data.
+
+Responses:
+- 403: The authenticated user is not the sender.
+- 404: The message was not found or the new text is empty.
+- 401: The access token is missing or invalid.
 
 ### DELETE /chat/:messageId 🔒
-Soft-delete a chat message (sets `isDeleted: true`). Only the sender of the message is permitted to delete it.
 
-#### Path Parameters
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| `messageId` | string | ✅ | MongoDB ObjectId of the message to delete. |
+Soft-delete a message sent by the authenticated user. The record is retained, isDeleted is set to true, and message, imageUrl, fileUrl, fileName, and audioUrl are cleared.
 
-#### Responses
+Path parameter: messageId is the MongoDB ObjectId of the message.
 
-##### Response 200
-Message deleted successfully.
-```json
-{
-  "success": true,
-  "message": "Message deleted successfully"
-}
-```
+Response 200:
 
-##### Response 400
-Message was not found.
-```json
-{
-  "success": false,
-  "message": "Request failed",
-  "data": {
-    "message": "Message was not found"
-  }
-}
-```
+    {
+      "success": true,
+      "message": "Message deleted successfully"
+    }
 
-##### Response 403
-Forbidden - not the sender of the message.
-```json
-{
-  "success": false,
-  "message": "Request failed",
-  "data": {
-    "message": "You are not authorized to delete this message"
-  }
-}
-```
-
-##### Response 404
-Message ID not provided.
-```json
-{
-  "success": false,
-  "message": "Request failed",
-  "data": {
-    "message": "Valid message Id is required"
-  }
-}
-```
-
-##### Response 401
-Not authorized.
+Responses:
+- 403: The authenticated user is not the sender.
+- 404: The message was not found.
+- 401: The access token is missing or invalid.
 
 ---
 
@@ -2772,4 +2759,4 @@ Not authorized.
 | `401` | Unauthorized          | The request lacks a valid JWT token in the Authorization header.               |
 | `403` | Forbidden             | The authenticated user lacks the required ownership permissions or Admin flag. |
 | `404` | Not Found             | The requested route, user, post, or comment could not be found.                |
-| `500` | Internal Server Error | An unexpected server error occurred during database access or image upload.    |
+| `500` | Internal Server Error | An unexpected server error occurred during database access or media upload.     |

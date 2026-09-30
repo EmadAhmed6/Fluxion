@@ -13,12 +13,16 @@ interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectUser: (user: any) => void;
+  title?: string;
+  description?: string;
 }
 
 export default function NewChatModal({
   isOpen,
   onClose,
   onSelectUser,
+  title,
+  description,
 }: NewChatModalProps) {
   const { t, isArabic } = useLanguage();
   const { data: currentUser } = useGetAuthMeQuery();
@@ -71,10 +75,10 @@ export default function NewChatModal({
               </div>
               <div>
                 <Text as="h3" size="default" font="bold" color="primary">
-                  {t.chat.newChat}
+                  {title || t.chat.newChat}
                 </Text>
                 <Text as="p" size="xs" color="secondary">
-                  {isArabic ? "اختر شخصاً لبدء المحادثة معه" : "Select someone to start chatting with"}
+                  {description || (isArabic ? "اختر شخصاً لبدء المحادثة معه" : "Select someone to start chatting with")}
                 </Text>
               </div>
             </div>

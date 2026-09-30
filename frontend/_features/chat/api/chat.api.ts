@@ -19,20 +19,53 @@ export const getMessages = async (userId: string): Promise<ChatMessage[]> => {
 export const sendMessage = async ({
   recipientId,
   message,
-  image,
+  file,
+  replyTo,
 }: SendMessagePayload): Promise<ChatMessage> => {
-  if (image) {
+  const endpoint = replyTo
+    ? `/chat/${recipientId}/${replyTo}/reply`
+    : `/chat/${recipientId}/send`;
+
+  if (file) {
     const formData = new FormData();
     if (message) formData.append("message", message);
-    formData.append("messageImage", image);
-    const res = await axiosClient.post(`/chat/send/${recipientId}`, formData, {
+    formData.append("file", file);
+    const res = await axiosClient.post(endpoint, formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      // File uploads can take longer than the API client's 10-second default.
+      // Keep the request pending until the server finishes saving the message.
+      timeout: 0,
     });
     return res.data?.data;
   }
 
-  const res = await axiosClient.post(`/chat/send/${recipientId}`, {
+  const res = await axiosClient.post(endpoint, {
     message: message || "",
+  });
+  return res.data?.data;
+};
+
+export const sendAudioMessage = async ({
+  recipientId,
+  audio,
+  replyTo,
+}: {
+  recipientId: string;
+  audio: Blob;
+  replyTo?: string;
+}): Promise<ChatMessage> => {
+  const formData = new FormData();
+  const extension = audio.type.includes("mp4")
+    ? "mp4"
+    : audio.type.includes("ogg")
+      ? "ogg"
+      : "webm";
+  formData.append("audio", audio, `voice-message.${extension}`);
+  if (replyTo) formData.append("replyTo", replyTo);
+
+  const res = await axiosClient.post(`/chat/${recipientId}/audio`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 0,
   });
   return res.data?.data;
 };
@@ -70,3 +103,15 @@ export const reactMessage = async ({
   return res.data?.data;
 };
 
+export const forwardMessage = async ({
+  messageId,
+  recipientId,
+}: {
+  messageId: string;
+  recipientId: string;
+}): Promise<ChatMessage> => {
+  const res = await axiosClient.post(
+    `/chat/${recipientId}/${messageId}/forward`,
+  );
+  return res.data?.data;
+};

@@ -10,10 +10,14 @@ export interface IChat {
   recipient: Types.ObjectId;
   message: string;
   imageUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
+  audioUrl?: string;
   replyTo?: Types.ObjectId;
   isDeleted: boolean;
   isRead: boolean;
   isEdited?: boolean;
+  isForwarded?: boolean;
   reactions?: IReaction[];
   createdAt: Date;
   updatedAt: Date;
@@ -37,10 +41,26 @@ const ChatSchema = new Schema(
     },
     imageUrl: {
       type: String,
+      default: false,
+    },
+    fileUrl: {
+      type: String,
+      default: false,
+    },
+    fileName: {
+      type: String,
+      default: false,
+    },
+    audioUrl: {
+      type: String,
     },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Chat",
+    },
+    isForwarded: {
+      type: Boolean,
+      default: false,
     },
     isDeleted: {
       type: Boolean,

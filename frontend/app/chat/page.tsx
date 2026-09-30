@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/_components/Navbar";
@@ -12,6 +13,8 @@ import {
   useDeleteMessage,
   useMarkAsRead,
   useReactMessage,
+  useForwardMessage,
+  useSendAudioMessage,
   ChatUser,
   ChatMessage,
   ChatConversation,
@@ -23,14 +26,18 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
+import Tooltip from "@/_components/Tooltip";
 import NewChatModal from "./NewChatModal";
+import ChatAudioPlayer from "./ChatAudioPlayer";
 import { MessageReactions, ReactionBadges } from "./MessageReactions";
 import {
   MessageSquare,
   Search,
   Plus,
   Send,
-  Image as ImageIcon,
+  Paperclip,
+  FileText,
+  Download,
   X,
   Trash2,
   Pencil,
@@ -41,11 +48,76 @@ import {
   Crown,
   Check,
   CheckCheck,
+  Reply,
+  Forward,
+  Smile,
+  Mic,
+  Square,
   Clock,
   Sparkles,
   Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { EmojiClickData, EmojiStyle, Theme } from "emoji-picker-react";
+import { appToast as toast } from "@/lib/toast";
+
+type FileCategory = "pdf" | "document" | "spreadsheet" | "presentation" | "archive" | "audio" | "video" | "image" | "code" | "file";
+
+const getFilePresentation = (fileName?: string, mimeType?: string) => {
+  const extension = fileName?.includes(".")
+    ? fileName.split(".").pop()?.toLowerCase() || ""
+    : "";
+  const category: FileCategory =
+    extension === "pdf" || mimeType === "application/pdf"
+      ? "pdf"
+      : ["doc", "docx", "odt", "rtf"].includes(extension) || mimeType?.includes("word")
+        ? "document"
+        : ["xls", "xlsx", "csv", "ods"].includes(extension) || mimeType?.includes("spreadsheet")
+          ? "spreadsheet"
+          : ["ppt", "pptx", "odp"].includes(extension) || mimeType?.includes("presentation")
+            ? "presentation"
+            : ["zip", "rar", "7z", "tar", "gz", "bz2"].includes(extension) || mimeType?.includes("compressed")
+              ? "archive"
+                : ["mp3", "wav", "ogg", "opus", "m4a", "aac", "flac"].includes(extension) || mimeType?.startsWith("audio/")
+                ? "audio"
+                : ["mp4", "mov", "avi", "mkv", "webm"].includes(extension) || mimeType?.startsWith("video/")
+                  ? "video"
+                  : ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "heic"].includes(extension) || mimeType?.startsWith("image/")
+                    ? "image"
+                    : ["js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "html", "css", "json", "xml", "yml", "yaml", "sh"].includes(extension) || mimeType?.includes("json")
+                      ? "code"
+                      : "file";
+
+  const presentation: Record<FileCategory, { label: string; tone: string }> = {
+    pdf: { label: "PDF", tone: "text-rose-500 bg-rose-500/10" },
+    document: { label: extension ? extension.toUpperCase() : "DOC", tone: "text-blue-500 bg-blue-500/10" },
+    spreadsheet: { label: extension ? extension.toUpperCase() : "XLS", tone: "text-emerald-500 bg-emerald-500/10" },
+    presentation: { label: extension ? extension.toUpperCase() : "PPT", tone: "text-orange-500 bg-orange-500/10" },
+    archive: { label: extension ? extension.toUpperCase() : "ZIP", tone: "text-amber-500 bg-amber-500/10" },
+    audio: { label: extension ? extension.toUpperCase() : "AUDIO", tone: "text-violet-500 bg-violet-500/10" },
+    video: { label: extension ? extension.toUpperCase() : "VIDEO", tone: "text-pink-500 bg-pink-500/10" },
+    image: { label: extension ? extension.toUpperCase() : "IMAGE", tone: "text-indigo-500 bg-indigo-500/10" },
+    code: { label: extension ? extension.toUpperCase() : "CODE", tone: "text-cyan-500 bg-cyan-500/10" },
+    file: { label: extension ? extension.toUpperCase() : "FILE", tone: "text-primary bg-primary/10" },
+  };
+
+  return { category, ...presentation[category] };
+};
+
+const formatFileSize = (bytes: number, isArabic: boolean) => {
+  if (!bytes) return isArabic ? "0 بايت" : "0 B";
+  const units = isArabic ? ["بايت", "ك.ب", "م.ب", "ج.ب"] : ["B", "KB", "MB", "GB"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const size = bytes / 1024 ** unitIndex;
+  return `${size >= 10 || unitIndex === 0 ? size.toFixed(0) : size.toFixed(1)} ${units[unitIndex]}`;
+};
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[350px] w-full animate-pulse rounded-xl bg-bgSecondary" />
+  ),
+});
 
 function ChatContent() {
   const router = useRouter();
@@ -61,16 +133,32 @@ function ChatContent() {
   const [activeUser, setActiveUser] = useState<ChatUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
   const [deleteModalMessageId, setDeleteModalMessageId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const discardRecordingRef = useRef(false);
+  const submitRecordingRef = useRef(false);
+  const audioWaveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // If queryUserId is provided in URL, fetch their user profile
   const { data: directTargetUser } = useGetUserProfile(queryUserId || "");
@@ -84,6 +172,8 @@ function ChatContent() {
   const deleteMessageMutation = useDeleteMessage();
   const markAsReadMutation = useMarkAsRead();
   const reactMessageMutation = useReactMessage();
+  const forwardMessageMutation = useForwardMessage();
+  const sendAudioMessageMutation = useSendAudioMessage();
 
   // Handle setting active user from URL query param or first conversation
   useEffect(() => {
@@ -108,6 +198,74 @@ function ChatContent() {
     }
   }, [activeUserId]);
 
+  useEffect(() => {
+    if (!isRecordingAudio) return;
+    const timer = window.setInterval(
+      () => setRecordingSeconds((seconds) => seconds + 1),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [isRecordingAudio]);
+
+  useEffect(() => {
+    const canvas = audioWaveformCanvasRef.current;
+    const analyser = audioAnalyserRef.current;
+    const context = canvas?.getContext("2d");
+    if (!isRecordingAudio || !canvas || !context || !analyser) return;
+
+    const samples = new Uint8Array(analyser.fftSize);
+    const barCount = 30;
+    const barWidth = 3;
+    const gap = 2;
+    const fillColor = getComputedStyle(canvas).color;
+    let animationFrame = 0;
+    const drawWaveform = () => {
+      analyser.getByteTimeDomainData(samples);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = fillColor;
+
+      for (let index = 0; index < barCount; index += 1) {
+        const sampleIndex = Math.floor((index / barCount) * samples.length);
+        const amplitude = Math.abs((samples[sampleIndex] || 128) - 128) / 128;
+        const height = Math.max(3, amplitude * canvas.height);
+        const x = index * (barWidth + gap);
+        context.fillRect(x, (canvas.height - height) / 2, barWidth, height);
+      }
+
+      animationFrame = requestAnimationFrame(drawWaveform);
+    };
+
+    animationFrame = requestAnimationFrame(drawWaveform);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [isRecordingAudio]);
+
+  useEffect(
+    () => () => {
+      const recorder = audioRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.onstop = null;
+        recorder.stop();
+      }
+      audioStreamRef.current?.getTracks().forEach((track) => track.stop());
+      audioSourceRef.current?.disconnect();
+      audioSourceRef.current = null;
+      audioAnalyserRef.current = null;
+      const audioContext = audioContextRef.current;
+      audioContextRef.current = null;
+      if (audioContext && audioContext.state !== "closed") {
+        void audioContext.close();
+      }
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    },
+    [audioPreviewUrl],
+  );
+
   // Scroll to bottom when messages update
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -115,29 +273,166 @@ function ChatContent() {
     }
   }, [messages, isMessagesLoading]);
 
-  // Handle image file selection
+  // Handle any file attachment
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedImage(file);
-      const url = URL.createObjectURL(file);
-      setImagePreviewUrl(url);
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      setSelectedFile(file);
+      setImagePreviewUrl(
+        file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+      );
     }
     e.target.value = "";
   };
 
-  const handleRemoveSelectedImage = () => {
+  const handleRemoveSelectedFile = () => {
     if (imagePreviewUrl) {
       URL.revokeObjectURL(imagePreviewUrl);
     }
-    setSelectedImage(null);
+    setSelectedFile(null);
     setImagePreviewUrl(null);
   };
 
+  const clearRecordedAudio = () => {
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    setAudioPreviewUrl(null);
+    setRecordedAudio(null);
+    setRecordingSeconds(0);
+  };
+
+  const closeAudioAnalysis = () => {
+    audioSourceRef.current?.disconnect();
+    audioSourceRef.current = null;
+    audioAnalyserRef.current = null;
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = null;
+    if (audioContext && audioContext.state !== "closed") {
+      void audioContext.close();
+    }
+  };
+
+  const startAudioRecording = async () => {
+    setIsEmojiPickerOpen(false);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error(
+        isArabic
+          ? "تسجيل الصوت غير مدعوم في هذا المتصفح."
+          : "Audio recording is not supported by this browser.",
+      );
+      return;
+    }
+
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+      discardRecordingRef.current = false;
+      submitRecordingRef.current = false;
+
+      try {
+        const AudioContextConstructor =
+          window.AudioContext ||
+          (window as typeof window & {
+            webkitAudioContext?: typeof AudioContext;
+          }).webkitAudioContext;
+        if (AudioContextConstructor) {
+          const audioContext = new AudioContextConstructor();
+          await audioContext.resume();
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 128;
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+          audioContextRef.current = audioContext;
+          audioAnalyserRef.current = analyser;
+          audioSourceRef.current = source;
+        }
+      } catch {
+        closeAudioAnalysis();
+      }
+
+      const recorder = new MediaRecorder(stream);
+      audioRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const chunks = audioChunksRef.current;
+        audioChunksRef.current = [];
+        audioStreamRef.current?.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+        closeAudioAnalysis();
+        audioRecorderRef.current = null;
+        setIsRecordingAudio(false);
+
+        if (discardRecordingRef.current) {
+          discardRecordingRef.current = false;
+          return;
+        }
+
+        const audioBlob = new Blob(chunks, {
+          type: recorder.mimeType || chunks[0]?.type || "audio/webm",
+        });
+        if (audioBlob.size > 0) {
+          if (submitRecordingRef.current) {
+            submitRecordingRef.current = false;
+            void sendAudioMessageMutation
+              .mutateAsync({
+                recipientId: activeUserId,
+                audio: audioBlob,
+                replyTo: replyingTo?._id,
+              })
+              .then(() => setReplyingTo(null))
+              .catch(() => {
+                setRecordedAudio(audioBlob);
+                setAudioPreviewUrl(URL.createObjectURL(audioBlob));
+              });
+            return;
+          }
+          setRecordedAudio(audioBlob);
+          setAudioPreviewUrl(URL.createObjectURL(audioBlob));
+        }
+      };
+
+      recorder.start();
+      setRecordingSeconds(0);
+      setIsRecordingAudio(true);
+    } catch {
+      stream?.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+      closeAudioAnalysis();
+      audioRecorderRef.current = null;
+      setIsRecordingAudio(false);
+      toast.error(
+        isArabic
+          ? "تعذر الوصول إلى الميكروفون. تحقق من صلاحية استخدامه."
+          : "Could not access the microphone. Check its permission.",
+      );
+    }
+  };
+
+  const stopAudioRecording = () => {
+    const recorder = audioRecorderRef.current;
+    if (recorder?.state === "recording") recorder.stop();
+  };
+
+  const cancelAudioRecording = () => {
+    submitRecordingRef.current = false;
+    const recorder = audioRecorderRef.current;
+    if (recorder?.state === "recording") {
+      discardRecordingRef.current = true;
+      recorder.stop();
+      return;
+    }
+    clearRecordedAudio();
+  };
+
   const handleStartEdit = (msg: ChatMessage) => {
+    setReplyingTo(null);
     setEditingMessage(msg);
     setMessageText(msg.message || "");
-    handleRemoveSelectedImage();
+    handleRemoveSelectedFile();
     setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
@@ -145,7 +440,38 @@ function ChatContent() {
 
   const handleCancelEdit = () => {
     setEditingMessage(null);
+    setReplyingTo(null);
     setMessageText("");
+  };
+
+  const handleStartReply = (msg: ChatMessage) => {
+    if (editingMessage) setMessageText("");
+    setEditingMessage(null);
+    setReplyingTo(msg);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleForwardMessage = (msg: ChatMessage) => {
+    setForwardingMessage(msg);
+  };
+
+  const handleSelectChatUser = async (user: ChatUser) => {
+    if (!forwardingMessage) {
+      setActiveUser(user);
+      router.push(`/chat?userId=${user._id}`);
+      return;
+    }
+
+    try {
+      await forwardMessageMutation.mutateAsync({
+        messageId: forwardingMessage._id,
+        recipientId: user._id,
+      });
+    } catch {
+      // The mutation displays the request error.
+    } finally {
+      setForwardingMessage(null);
+    }
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -153,6 +479,13 @@ function ChatContent() {
     if (!activeUserId) return;
 
     const trimmed = messageText.trim();
+
+    if (isRecordingAudio) {
+      submitRecordingRef.current = true;
+      setIsEmojiPickerOpen(false);
+      stopAudioRecording();
+      return;
+    }
 
     // If editing existing message
     if (editingMessage) {
@@ -172,24 +505,50 @@ function ChatContent() {
       return;
     }
 
-    if (!trimmed && !selectedImage) return;
+    if (recordedAudio) {
+      try {
+        await sendAudioMessageMutation.mutateAsync({
+          recipientId: activeUserId,
+          audio: recordedAudio,
+          replyTo: replyingTo?._id,
+        });
+        clearRecordedAudio();
+        setReplyingTo(null);
+      } catch {
+        // Keep the recording available so it can be retried.
+      }
+      return;
+    }
+
+    if (!trimmed && !selectedFile) return;
 
     const currentMsg = trimmed;
-    const currentImg = selectedImage;
+    const currentFile = selectedFile;
 
     // Reset inputs immediately for responsive UX
     setMessageText("");
-    handleRemoveSelectedImage();
+    handleRemoveSelectedFile();
+    setIsEmojiPickerOpen(false);
 
     try {
       await sendMessageMutation.mutateAsync({
         recipientId: activeUserId,
         message: currentMsg,
-        image: currentImg,
+        file: currentFile,
+        replyTo: replyingTo?._id,
       });
+      setReplyingTo(null);
     } catch {
       // Re-fill on failure
       setMessageText(currentMsg);
+      if (currentFile) {
+        setSelectedFile(currentFile);
+        setImagePreviewUrl(
+          currentFile.type.startsWith("image/")
+            ? URL.createObjectURL(currentFile)
+            : null,
+        );
+      }
     }
   };
 
@@ -199,6 +558,8 @@ function ChatContent() {
       handleSendMessage();
     } else if (e.key === "Escape" && editingMessage) {
       handleCancelEdit();
+    } else if (e.key === "Escape" && isEmojiPickerOpen) {
+      setIsEmojiPickerOpen(false);
     }
   };
 
@@ -215,6 +576,15 @@ function ChatContent() {
   }, [conversations, searchQuery]);
 
   const BackIcon = isArabic ? ArrowRight : ArrowLeft;
+  const composerPlaceholder = isRecordingAudio
+    ? t.chat.recording
+    : recordedAudio
+      ? t.chat.voiceMessage
+      : editingMessage
+        ? isArabic
+          ? "عدّل رسالتك..."
+          : "Edit your message..."
+        : t.chat.typeMessage;
 
   return (
     <div className="min-h-screen bg-bgPrimary text-textPrimary flex flex-col justify-between">
@@ -381,8 +751,12 @@ function ChatContent() {
                                   raw === "📷";
                                 const clean = isPhotoAuto ? "" : raw;
                                 if (clean) return clean;
+                                if (conv.lastMessage?.audioUrl)
+                                  return "🎙️ " + t.chat.voiceMessage;
                                 if (conv.lastMessage?.imageUrl)
                                   return "📷 " + t.chat.photo;
+                                if (conv.lastMessage?.fileUrl)
+                                  return "📎 " + (conv.lastMessage.fileName || t.chat.fileAttachment);
                                 return "";
                               })()}
                           </p>
@@ -527,6 +901,11 @@ function ChatContent() {
 
                       const rawMessage = (msg.message || "").trim();
                       const hasImage = Boolean(msg.imageUrl);
+                      const hasFile = Boolean(msg.fileUrl);
+                      const filePresentation = getFilePresentation(msg.fileName);
+                      const isAudioFile = filePresentation.category === "audio";
+                      const audioSrc = msg.audioUrl || (isAudioFile ? msg.fileUrl : "");
+                      const hasAudio = Boolean(audioSrc);
                       const isAutoPhotoText =
                         rawMessage === "📷 Photo" ||
                         rawMessage === "Photo" ||
@@ -535,7 +914,34 @@ function ChatContent() {
                       const displayMessage =
                         isAutoPhotoText && hasImage ? "" : rawMessage;
                       const hasText = displayMessage.length > 0;
-                      const isImageOnly = hasImage && !hasText;
+                      const isImageOnly =
+                        hasImage && !hasText && !hasAudio && !hasFile;
+                      const isAudioOnly = hasAudio && !hasText && !hasFile;
+                      const repliedMessage =
+                        msg.replyTo && typeof msg.replyTo !== "string"
+                          ? msg.replyTo
+                          : null;
+                      const repliedSender = repliedMessage?.sender;
+                      const repliedSenderId =
+                        typeof repliedSender === "string"
+                          ? repliedSender
+                          : repliedSender?._id;
+                      const repliedSenderName =
+                        repliedSenderId === currentUser?._id
+                          ? t.chat.you
+                          : typeof repliedSender === "string"
+                            ? activeUser.fullName || activeUser.username
+                            : repliedSender?.fullName || repliedSender?.username || activeUser.fullName || activeUser.username;
+                      const repliedText = repliedMessage?.isDeleted
+                        ? t.chat.replyDeleted
+                        : repliedMessage?.message?.trim() ||
+                          (repliedMessage?.audioUrl
+                            ? `🎙️ ${t.chat.voiceMessage}`
+                            : repliedMessage?.imageUrl
+                              ? `📷 ${t.chat.photo}`
+                              : repliedMessage?.fileUrl
+                                ? `📎 ${repliedMessage.fileName || t.chat.fileAttachment}`
+                                : "");
 
                       return (
                         <div
@@ -578,24 +984,48 @@ function ChatContent() {
                                 }
                                 isPending={reactMessageMutation.isPending}
                               />
-                              {hasText && (
+                              <Tooltip content={t.chat.reply} position="top">
                                 <button
                                   type="button"
-                                  onClick={() => handleStartEdit(msg)}
+                                  onClick={() => handleStartReply(msg)}
                                   className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                  title={t.chat.editMessage}
+                                  aria-label={t.chat.reply}
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
+                                  <Reply className="h-3.5 w-3.5" />
                                 </button>
+                              </Tooltip>
+                              <Tooltip content={t.chat.forwardMessage} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => handleForwardMessage(msg)}
+                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
+                                  aria-label={t.chat.forwardMessage}
+                                >
+                                  <Forward className="h-3.5 w-3.5" />
+                                </button>
+                              </Tooltip>
+                              {hasText && (
+                                <Tooltip content={t.chat.editMessage} position="top">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(msg)}
+                                    className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
+                                    aria-label={t.chat.editMessage}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                </Tooltip>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => setDeleteModalMessageId(msg._id)}
-                                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-textSecondary hover:text-rose-500 transition-colors cursor-pointer"
-                                title={t.chat.deleteMessage}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              <Tooltip content={t.chat.deleteMessage} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteModalMessageId(msg._id)}
+                                  className="p-1.5 rounded-lg hover:bg-rose-500/10 text-textSecondary hover:text-rose-500 transition-colors cursor-pointer"
+                                  aria-label={t.chat.deleteMessage}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </Tooltip>
                             </div>
                           )}
 
@@ -605,6 +1035,28 @@ function ChatContent() {
                               isMe ? "items-end" : "items-start"
                             }`}
                           >
+                            {repliedMessage && (
+                              <div
+                                className={`w-full mb-1 px-2.5 py-1.5 rounded-xl border-s-2 text-[10px] sm:text-[11px] ${
+                                  isMe
+                                    ? "border-primary/70 bg-primary/10 text-textPrimary"
+                                    : "border-textSecondary/50 bg-bgPrimary/70 text-textSecondary"
+                                }`}
+                              >
+                                <span className="block font-bold truncate">
+                                  {repliedSenderName}
+                                </span>
+                                <span className="block truncate opacity-80">
+                                  {repliedText}
+                                </span>
+                              </div>
+                            )}
+                            {msg.isForwarded && (
+                              <div className="mb-1 flex items-center gap-1 text-[10px] text-textSecondary italic">
+                                <Forward className="h-3 w-3" />
+                                <span>{t.chat.forwarded}</span>
+                              </div>
+                            )}
                             {msg.isDeleted ? (
                               /* Deleted Message Placeholder (WhatsApp Style) */
                               <div
@@ -621,6 +1073,25 @@ function ChatContent() {
                                 <span suppressHydrationWarning className="text-[10px] text-textSecondary/50 shrink-0 ltr:ml-2 rtl:mr-2">
                                   {timeFormatted}
                                 </span>
+                              </div>
+                            ) : isAudioOnly ? (
+                              <div className="w-fit px-1 py-1">
+                                <ChatAudioPlayer
+                                  src={audioSrc}
+                                  playLabel={t.chat.playAudio}
+                                  pauseLabel={t.chat.pauseAudio}
+                                />
+                                <div
+                                  className="flex items-center justify-end gap-1 text-[10px] mt-1 text-textSecondary"
+                                >
+                                  <span suppressHydrationWarning>{timeFormatted}</span>
+                                  {isMe &&
+                                    (msg.isRead ? (
+                                      <CheckCheck className="h-3 w-3 text-primary" />
+                                    ) : (
+                                      <Check className="h-3 w-3 text-primary" />
+                                    ))}
+                                </div>
                               </div>
                             ) : isImageOnly ? (
                               /* Standalone Image: Natural sizing, NO outer background, NO borders */
@@ -667,6 +1138,46 @@ function ChatContent() {
                                       className="max-h-64 w-full object-cover rounded-xl block"
                                     />
                                   </div>
+                                )}
+
+                                {hasAudio && (
+                                  <ChatAudioPlayer
+                                    src={audioSrc}
+                                    playLabel={t.chat.playAudio}
+                                    pauseLabel={t.chat.pauseAudio}
+                                  />
+                                )}
+
+                                {hasFile && !isAudioFile && (
+                                  <a
+                                    href={msg.fileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download={msg.fileName || undefined}
+                                    className={`group mb-1.5 flex min-w-[220px] max-w-[300px] items-center gap-3 rounded-2xl border p-2.5 transition-all hover:-translate-y-0.5 ${
+                                      isMe
+                                        ? "border-white/15 bg-white/10 hover:bg-white/15"
+                                        : "border-borderPrimary/60 bg-bgPrimary/80 hover:bg-bgPrimary"
+                                    }`}
+                                  >
+                                    <span className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${filePresentation.tone}`}>
+                                      <FileText className="h-5 w-5" />
+                                      <span className="absolute -bottom-1 -right-1 rounded-md border border-bgSecondary bg-bgSecondary px-1 py-0.5 text-[7px] font-black leading-none text-textPrimary shadow-sm">
+                                        {filePresentation.label}
+                                      </span>
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate text-[11px] font-bold">
+                                        {msg.fileName || t.chat.fileAttachment}
+                                      </span>
+                                      <span className={`mt-0.5 block text-[9px] font-extrabold tracking-wider ${filePresentation.tone.split(" ")[0]}`}>
+                                        {filePresentation.label}
+                                      </span>
+                                    </span>
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bgSecondary/70 text-current transition-colors group-hover:bg-primary group-hover:text-white">
+                                      <Download className="h-3.5 w-3.5" />
+                                    </span>
+                                  </a>
                                 )}
 
                                 {/* Text & Inline Status Footer */}
@@ -731,6 +1242,26 @@ function ChatContent() {
                                 }
                                 isPending={reactMessageMutation.isPending}
                               />
+                              <Tooltip content={t.chat.reply} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartReply(msg)}
+                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
+                                  aria-label={t.chat.reply}
+                                >
+                                  <Reply className="h-3.5 w-3.5" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip content={t.chat.forwardMessage} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => handleForwardMessage(msg)}
+                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
+                                  aria-label={t.chat.forwardMessage}
+                                >
+                                  <Forward className="h-3.5 w-3.5" />
+                                </button>
+                              </Tooltip>
                             </div>
                           )}
                         </div>
@@ -740,15 +1271,52 @@ function ChatContent() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Selected Image Preview Bar */}
-                {imagePreviewUrl && (
+                {recordedAudio && audioPreviewUrl && (
                   <div className="px-4 py-2 bg-bgSecondary/90 border-t border-borderPrimary/40 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <img
-                        src={imagePreviewUrl}
-                        alt="Selected attachment"
-                        className="h-12 w-12 rounded-xl object-cover border border-borderPrimary"
+                      <Mic className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs font-semibold text-textPrimary shrink-0">
+                        {t.chat.voiceMessage}
+                      </span>
+                      <ChatAudioPlayer
+                        src={audioPreviewUrl}
+                        playLabel={t.chat.playAudio}
+                        pauseLabel={t.chat.pauseAudio}
                       />
+                    </div>
+                    <Tooltip content={t.chat.cancelRecording} position="top">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearRecordedAudio}
+                        className="p-2 rounded-xl text-textSecondary hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                        aria-label={t.chat.cancelRecording}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                )}
+
+                {/* Selected File Preview Bar */}
+                {selectedFile && (
+                  <div className="px-4 py-2 bg-bgSecondary/90 border-t border-borderPrimary/40 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {imagePreviewUrl ? (
+                        <img
+                          src={imagePreviewUrl}
+                          alt="Selected attachment"
+                          className="h-12 w-12 rounded-xl object-cover border border-borderPrimary"
+                        />
+                      ) : (
+                        <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${getFilePresentation(selectedFile.name, selectedFile.type).tone}`}>
+                          <FileText className="h-5 w-5" />
+                          <span className="absolute -bottom-1 -right-1 rounded-md border border-bgSecondary bg-bgSecondary px-1 py-0.5 text-[7px] font-black leading-none text-textPrimary shadow-sm">
+                            {getFilePresentation(selectedFile.name, selectedFile.type).label}
+                          </span>
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <Text
                           as="p"
@@ -757,7 +1325,7 @@ function ChatContent() {
                           color="primary"
                           className="truncate"
                         >
-                          {selectedImage?.name}
+                          {selectedFile.name}
                         </Text>
                         <Text
                           as="p"
@@ -765,13 +1333,14 @@ function ChatContent() {
                           color="secondary"
                           className="text-[10px]"
                         >
-                          {isArabic ? "مستعد للإرسال" : "Ready to send"}
+                          {isArabic ? "جاهز للإرسال" : "Ready to send"} · {getFilePresentation(selectedFile.name, selectedFile.type).label} · {formatFileSize(selectedFile.size, isArabic)}
                         </Text>
                       </div>
                     </div>
 
                     <button
-                      onClick={handleRemoveSelectedImage}
+                      type="button"
+                      onClick={handleRemoveSelectedFile}
                       className="p-1.5 rounded-full bg-bgPrimary hover:bg-rose-500/10 text-textSecondary hover:text-rose-500 transition-colors cursor-pointer"
                     >
                       <X className="h-4 w-4" />
@@ -806,18 +1375,141 @@ function ChatContent() {
                   </div>
                 )}
 
+                {replyingTo && !editingMessage && (
+                  <div className="px-4 py-2 bg-primary/10 border-t border-primary/20 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="p-1 rounded-lg bg-primary/20 text-primary">
+                        <Reply className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-primary block text-[11px]">
+                          {t.chat.replyingTo}
+                        </span>
+                        <p className="text-[11px] text-textSecondary truncate max-w-xs sm:max-w-md">
+                          {replyingTo.isDeleted
+                            ? t.chat.replyDeleted
+                            : replyingTo.message ||
+                              (replyingTo.audioUrl
+                                ? `🎙️ ${t.chat.voiceMessage}`
+                            : replyingTo.imageUrl
+                                  ? `📷 ${t.chat.photo}`
+                                  : replyingTo.fileUrl
+                                    ? `📎 ${replyingTo.fileName || t.chat.fileAttachment}`
+                                    : "")}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="p-1.5 rounded-full hover:bg-bgPrimary text-textSecondary hover:text-textPrimary transition-colors cursor-pointer"
+                      title={t.chat.cancel}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Chat Input Bar */}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-3 sm:p-4 border-t border-borderPrimary/40 bg-bgSecondary/60 backdrop-blur-md flex items-center gap-2"
+                  className="relative z-20 p-3 sm:p-4 border-t border-borderPrimary/40 bg-bgSecondary/60 backdrop-blur-md flex items-center gap-2"
                 >
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept="image/*"
                     onChange={handleFileChange}
                     className="hidden"
                   />
+
+                  {isRecordingAudio ? (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className="flex flex-1 min-w-0 items-center justify-between gap-3 rounded-2xl bg-rose-500/10 px-3 py-2"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-60" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold text-rose-500">
+                          {t.chat.recording}
+                        </span>
+                        <canvas
+                          ref={audioWaveformCanvasRef}
+                          width={150}
+                          height={32}
+                          className="h-8 w-[min(150px,18vw)] text-rose-500"
+                          aria-hidden="true"
+                        />
+                        <span className="shrink-0 font-mono text-xs tabular-nums text-textSecondary">
+                          {`${String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:${String(recordingSeconds % 60).padStart(2, "0")}`}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Tooltip content={t.chat.stopRecording} position="top">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={stopAudioRecording}
+                            className="rounded-xl text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                            aria-label={t.chat.stopRecording}
+                          >
+                            <Square className="h-4 w-4 fill-current" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content={t.chat.cancelRecording} position="top">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={cancelAudioRecording}
+                            className="rounded-xl text-textSecondary hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
+                            aria-label={t.chat.cancelRecording}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          disabled={sendAudioMessageMutation.isPending}
+                          className="rounded-xl bg-primary text-white hover:bg-primaryHover cursor-pointer disabled:opacity-50"
+                          aria-label={t.chat.send}
+                          title={t.chat.send}
+                        >
+                          {sendAudioMessageMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 rtl:rotate-180" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                  {!editingMessage && !recordedAudio && (
+                    <Tooltip content={t.chat.recordAudio} position="top">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={startAudioRecording}
+                        disabled={
+                          Boolean(messageText.trim()) ||
+                          Boolean(selectedFile) ||
+                          sendAudioMessageMutation.isPending
+                        }
+                        className="p-2.5 rounded-xl text-textSecondary hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={t.chat.recordAudio}
+                      >
+                        <Mic className="h-5 w-5" />
+                      </Button>
+                    </Tooltip>
+                  )}
 
                   {/* Attachment Button (hidden when editing a message) */}
                   {!editingMessage && (
@@ -826,12 +1518,50 @@ function ChatContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={isRecordingAudio || Boolean(recordedAudio)}
                       className="p-2.5 rounded-xl text-textSecondary hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
                       title={t.chat.uploadImage}
                     >
-                      <ImageIcon className="h-5 w-5" />
+                      <Paperclip className="h-5 w-5" />
                     </Button>
                   )}
+
+                  <div className="relative shrink-0">
+                    <Tooltip content={t.chat.emojiPicker} position="top">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEmojiPickerOpen((open) => !open)}
+                        disabled={isRecordingAudio || Boolean(recordedAudio)}
+                        className="p-2.5 rounded-xl text-textSecondary hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                        aria-label={t.chat.emojiPicker}
+                        aria-expanded={isEmojiPickerOpen}
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                    </Tooltip>
+                    {isEmojiPickerOpen && (
+                      <div className="absolute bottom-full mb-3 ltr:left-0 rtl:right-0 z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-borderPrimary shadow-2xl">
+                        <EmojiPicker
+                          theme={Theme.AUTO}
+                          emojiStyle={EmojiStyle.APPLE}
+                          onEmojiClick={(emojiData: EmojiClickData) => {
+                            setMessageText((text) => text + emojiData.emoji);
+                            setIsEmojiPickerOpen(false);
+                            setTimeout(() => inputRef.current?.focus(), 0);
+                          }}
+                          lazyLoadEmojis
+                          searchPlaceHolder={
+                            isArabic ? "ابحث عن إيموجي..." : "Search emojis..."
+                          }
+                          width="100%"
+                          height={350}
+                          previewConfig={{ showPreview: false }}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Text Input */}
                   <input
@@ -840,13 +1570,8 @@ function ChatContent() {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={
-                      editingMessage
-                        ? isArabic
-                          ? "عدّل رسالتك..."
-                          : "Edit your message..."
-                        : t.chat.typeMessage
-                    }
+                    disabled={isRecordingAudio || Boolean(recordedAudio)}
+                    placeholder={composerPlaceholder}
                     className="flex-1 py-2.5 px-4 text-xs sm:text-sm rounded-2xl bg-bgPrimary border border-borderPrimary/60 text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
 
@@ -855,13 +1580,18 @@ function ChatContent() {
                     type="submit"
                     disabled={
                       sendMessageMutation.isPending ||
+                      sendAudioMessageMutation.isPending ||
                       editMessageMutation.isPending ||
-                      (!messageText.trim() && !selectedImage)
+                      (!isRecordingAudio &&
+                        !recordedAudio &&
+                        !messageText.trim() &&
+                        !selectedFile)
                     }
                     size="sm"
                     className="rounded-2xl px-4 py-2.5 bg-primary hover:bg-primaryHover text-white cursor-pointer shadow-md disabled:opacity-50 transition-transform active:scale-95"
                   >
                     {sendMessageMutation.isPending ||
+                    sendAudioMessageMutation.isPending ||
                     editMessageMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : editingMessage ? (
@@ -870,6 +1600,8 @@ function ChatContent() {
                       <Send className="h-4 w-4 rtl:rotate-180" />
                     )}
                   </Button>
+                    </>
+                  )}
                 </form>
               </>
             ) : (
@@ -901,12 +1633,14 @@ function ChatContent() {
 
       {/* New Chat Picker Modal */}
       <NewChatModal
-        isOpen={isNewChatModalOpen}
-        onClose={() => setIsNewChatModalOpen(false)}
-        onSelectUser={(u) => {
-          setActiveUser(u);
-          router.push(`/chat?userId=${u._id}`);
+        isOpen={isNewChatModalOpen || !!forwardingMessage}
+        onClose={() => {
+          setIsNewChatModalOpen(false);
+          setForwardingMessage(null);
         }}
+        onSelectUser={handleSelectChatUser}
+        title={forwardingMessage ? t.chat.forwardMessage : undefined}
+        description={forwardingMessage ? t.chat.chooseForwardRecipient : undefined}
       />
 
       {/* Image Preview Modal */}

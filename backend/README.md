@@ -52,6 +52,15 @@ Includes JSON Web Token (JWT) authentication, role-based authorization, rate lim
 - **Notifications (`/notifications`)**: Retrieve user notifications with populated sender info, mark all notifications as read, or mark individual notifications as read.
 - **Activity Triggers**: Supports notifications for follow, comment, like, share, reply, comment like, and reply like events.
 
+### 💬 6. Direct Chat & Messaging
+
+- **Conversation Inbox (`/chat/conversations`)**: Lists the latest message and unread count for each conversation.
+- **Text and File Messages (`/chat/:recipientId/send`)**: Sends text with optional image or non-image file attachments (up to 100 MiB).
+- **Voice Messages (`/chat/:recipientId/audio`)**: Uploads audio messages and supports replies to existing messages.
+- **Replies and Forwards**: Reply to a message with text or a file, and forward existing text, media, or voice messages.
+- **Message Controls**: Edit and soft-delete sent messages; add, change, or remove reactions.
+- **Read State**: Fetching a conversation marks incoming messages as read; an explicit mark-as-read endpoint is also available.
+
 ---
 
 ## 📊 Database Entity-Relationship (ER) Diagram
@@ -62,6 +71,9 @@ erDiagram
     USER ||--o{ COMMENT : "writes"
     POST ||--o{ COMMENT : "contains"
     COMMENT ||--o{ COMMENT : "replies"
+    USER ||--o{ CHAT : "sends"
+    USER ||--o{ CHAT : "receives"
+    CHAT o|--o{ CHAT : "replies_to"
     USER ||--o{ POST : "likes"
     USER ||--o{ COMMENT : "likes"
     USER ||--o{ NOTIFICATION : "receives/triggers"
@@ -109,6 +121,25 @@ erDiagram
         array likes
         number commentLikesCount
         number replyCommentsCount
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    CHAT {
+        ObjectId id PK
+        ObjectId sender FK
+        ObjectId recipient FK
+        string message
+        string imageUrl
+        string fileUrl
+        string fileName
+        string audioUrl
+        ObjectId replyTo FK
+        array reactions
+        boolean isDeleted
+        boolean isRead
+        boolean isEdited
+        boolean isForwarded
         datetime createdAt
         datetime updatedAt
     }
@@ -170,4 +201,4 @@ npm run build
 Interactive Swagger API docs available at:
 `http://localhost:5000/api-docs`
 
-Full Markdown documentation available in [`API-Docs.md`](file:///c:/Programming/Backend/Projects/Express.js/Codexa/backend/API-Docs.md).
+Full Markdown documentation available in [API-Docs.md](API-Docs.md).

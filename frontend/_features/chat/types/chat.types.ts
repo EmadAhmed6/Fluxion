@@ -23,10 +23,15 @@ export interface ChatMessage {
   recipient: ChatUser | string;
   message: string;
   imageUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
+  audioUrl?: string;
   isDeleted: boolean;
   isRead: boolean;
   isEdited?: boolean;
+  isForwarded?: boolean;
   reactions?: ChatReaction[];
+  replyTo?: ChatMessage | string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,5 +45,6 @@ export interface ChatConversation {
 export interface SendMessagePayload {
   recipientId: string;
   message?: string;
-  image?: File | null;
+  file?: File | null;
+  replyTo?: string;
 }

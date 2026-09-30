@@ -4,6 +4,8 @@ import Chat from "./chat.model.js";
 import cloudinary from "../../utils/cloudinary.js";
 import fs from "fs";
 import { Types } from "mongoose";
+import { sendError } from "../../middlewares/errors.js";
+import { file } from "zod";
 
 // SEND MESSAGE
 const sendMessage = asyncHandler(
@@ -12,22 +14,34 @@ const sendMessage = asyncHandler(
     const message = req.body.message;
     const senderId = req.user?.id;
     if (!recipientId) {
-      res
-        .status(400)
-        .json({ success: false, message: "Valid recipient is required " });
+      sendError(res, 400, "Valid recipientId is required");
       return;
     }
     if ((!message || message.trim() === "") && !req.file) {
-      res
-        .status(400)
-        .json({ success: false, message: "Message or image is required" });
+      sendError(res, 400, "Message or image is required");
       return;
     }
     let imageUrl: string | undefined = undefined;
+    let fileUrl: string | undefined = undefined;
+    let fileName: string | undefined = undefined;
+
     if (req.file) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path);
-        imageUrl = result.secure_url;
+        fileName = Buffer.from(req.file.originalname, "latin1").toString(
+          "utf8",
+        );
+        let result = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "auto",
+          access_mode: "public",
+          type: "upload",
+        });
+
+        if (req.file.mimetype.startsWith("image/")) {
+          imageUrl = result.secure_url;
+        } else {
+          fileUrl = result.secure_url;
+        }
+
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
@@ -39,13 +53,25 @@ const sendMessage = asyncHandler(
       sender: senderId,
       recipient: recipientId,
       message: message ? message.trim() : "",
-      imageUrl: imageUrl,
+      imageUrl: imageUrl || "",
+      fileUrl: fileUrl || "",
+      fileName: fileName || "",
     });
+
     await newMessage.save();
+
     const populatedMessage = await Chat.findById(newMessage._id)
       .populate("sender", "username fullName profilePicture role")
       .populate("recipient", "username fullName profilePicture role")
-      .populate("reactions.user", "username fullName profilePicture");
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
+
     res.status(201).json({
       success: true,
       message: "Message sent successfully",
@@ -62,39 +88,23 @@ const editMessage = asyncHandler(
     const currentUserId = req.user?.id;
 
     if (!messageId) {
-      res.status(400).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Valid message id is required" },
-      });
+      sendError(res, 400, "Valid messageId is required");
       return;
     }
 
     const message = await Chat.findById(messageId);
     if (!message) {
-      res.status(404).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Message was not found" },
-      });
+      sendError(res, 404, "Message was not fonud");
       return;
     }
 
     if (message.sender.toString() !== currentUserId) {
-      res.status(403).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "You are not authorized to edit this message" },
-      });
+      sendError(res, 403, "You are not authorized to edit this message");
       return;
     }
 
     if (!newMessage || newMessage.trim() === "") {
-      res.status(400).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Valid message is required" },
-      });
+      sendError(res, 404, "Message was not found");
       return;
     }
 
@@ -105,7 +115,14 @@ const editMessage = asyncHandler(
     const updatedMessage = await Chat.findById(message._id)
       .populate("sender", "username fullName profilePicture role")
       .populate("recipient", "username fullName profilePicture role")
-      .populate("reactions.user", "username fullName profilePicture");
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
 
     res.status(200).json({
       success: true,
@@ -115,12 +132,51 @@ const editMessage = asyncHandler(
   },
 );
 
+// DELETE MESSAGE
+const deleteMessage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const messageId = req.params.messageId;
+    const currentUserId = req.user?.id;
+    if (!messageId) {
+      sendError(res, 400, "Valid messageId is required");
+      return;
+    }
+
+    const message = await Chat.findById(messageId);
+    if (!message) {
+      sendError(res, 404, "Message was not found");
+      return;
+    }
+    if (message?.sender.toString() !== currentUserId) {
+      res.status(403).json({
+        success: false,
+        message: "Request failed",
+        data: { message: "You are not authorized to delete this message" },
+      });
+      return;
+    }
+
+    message.isDeleted = true;
+    message.message = "";
+    message.imageUrl = "";
+    message.fileUrl = "";
+    message.fileName = "";
+    message.audioUrl = "";
+    await message.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Message deleted successfully",
+    });
+  },
+);
+
 // GET CONVERSATIONS
 const getConversations = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const currentUserId = req.user?.id;
     if (!currentUserId) {
-      res.status(401).json({ success: false, message: "Unauthorized" });
+      sendError(res, 401, "You are not authorized");
       return;
     }
 
@@ -173,9 +229,7 @@ const getMessages = asyncHandler(
     const userId = req.params.userId;
     const currentUserId = req.user?.id;
     if (!userId || !currentUserId) {
-      res
-        .status(400)
-        .json({ success: false, message: "Valid userId is required" });
+      sendError(res, 400, "Valid userId is required");
       return;
     }
 
@@ -188,7 +242,14 @@ const getMessages = asyncHandler(
       .sort({ createdAt: 1 })
       .populate("sender", "username fullName profilePicture role")
       .populate("recipient", "username fullName profilePicture role")
-      .populate("reactions.user", "username fullName profilePicture");
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
 
     await Chat.updateMany(
       { sender: userId, recipient: currentUserId, isRead: false },
@@ -209,9 +270,7 @@ const markAsRead = asyncHandler(
     const userId = req.params.userId;
     const currentUserId = req.user?.id;
     if (!userId || !currentUserId) {
-      res
-        .status(400)
-        .json({ success: false, message: "Valid userId is required" });
+      sendError(res, 400, "Valid userId is required");
       return;
     }
 
@@ -234,21 +293,13 @@ const replyMessage = asyncHandler(
     const recipientId = req.params.recipientId;
     const senderId = req.user?.id;
     const message = req.body.message;
-    
+
     if (!recipientId || !senderId) {
-      res.status(400).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Valid userId is required" },
-      });
+      sendError(res, 400, "Valid recipientId is required");
       return;
     }
-    if (!message || message.trim() === "") {
-      res.status(400).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Valid message is required" },
-      });
+    if ((!message || message.trim() === "") && !req.file) {
+      sendError(res, 400, "Valid message is required");
       return;
     }
 
@@ -261,11 +312,27 @@ const replyMessage = asyncHandler(
       });
       return;
     }
+
     let imageUrl: string | undefined = undefined;
+    let fileUrl: string | undefined = undefined;
+    let fileName: string | undefined = undefined;
+
     if (req.file) {
       try {
-        let result = await cloudinary.uploader.upload(req.file.path);
-        imageUrl = result.secure_url;
+        fileName = Buffer.from(req.file.originalname, "latin1").toString(
+          "utf8",
+        );
+        let result = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "auto",
+          access_mode: "public",
+          type: "upload",
+        });
+        if (req.file.mimetype.startsWith("image/")) {
+          imageUrl = result.secure_url;
+        } else {
+          fileUrl = result.secure_url;
+        }
+
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
@@ -282,8 +349,10 @@ const replyMessage = asyncHandler(
     const newReplyMessage = new Chat({
       sender: senderId,
       recipient: recipientId,
-      message: message,
-      imageUrl: imageUrl,
+      message: message ? message.trim() : "",
+      imageUrl: imageUrl || "",
+      fileUrl: fileUrl || "",
+      fileName: fileName || "",
       replyTo: messageId,
     });
 
@@ -293,7 +362,13 @@ const replyMessage = asyncHandler(
       .populate("sender", "username fullName profilePicture role")
       .populate("recipient", "username fullName profilePicture role")
       .populate("reactions.user", "username fullName profilePicture")
-      .populate("replyTo", "username fullName profilePicture");
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
 
     res.status(201).json({
       success: true,
@@ -303,46 +378,82 @@ const replyMessage = asyncHandler(
   },
 );
 
-// DELETE MESSAGE
-const deleteMessage = asyncHandler(
+// FORWARD MESSAGE
+const forwardMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const messageId = req.params.messageId;
-    const currentUserId = req.user?.id;
+    const recipientId = req.params.recipientId;
+    const senderId = req.user?.id;
+
     if (!messageId) {
-      res.status(404).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Valid message Id is required" },
-      });
+      sendError(res, 400, "Valid messageId is required");
+      return;
+    }
+    if (!recipientId) {
+      sendError(res, 400, "Valid recipientId is required");
+      return;
+    }
+    const originalMessage = await Chat.findById(messageId);
+    if (!originalMessage) {
+      sendError(res, 404, "message was not fonud");
       return;
     }
 
-    const message = await Chat.findById(messageId);
-    if (!message) {
-      res.status(400).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "Message was not found" },
-      });
-      return;
-    }
-    if (message?.sender.toString() !== currentUserId) {
-      res.status(403).json({
-        success: false,
-        message: "Request failed",
-        data: { message: "You are not authorized to delete this message" },
-      });
-      return;
+    let imageUrl: string | undefined = undefined;
+    let fileUrl: string | undefined = undefined;
+    let fileName: string | undefined = undefined;
+    if (req.file) {
+      try {
+        fileName = Buffer.from(req.file.originalname, "latin1").toString(
+          "utf8",
+        );
+        let result = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "auto",
+          access_mode: "public",
+          type: "upload",
+        });
+        if (req.file.mimetype.startsWith("image/")) {
+          imageUrl = result.secure_url;
+        } else {
+          fileUrl = result.secure_url;
+        }
+
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (err) {
+        res.status(400).json({
+          success: false,
+          message: "Request failed",
+          data: "Something went wrong",
+        });
+      }
     }
 
-    message.isDeleted = true;
-    message.message = "";
-    message.imageUrl = "";
-    await message.save();
+    const newForwardedMessage = new Chat({
+      sender: senderId,
+      recipient: recipientId,
+      message: originalMessage.message,
+      imageUrl: originalMessage.imageUrl,
+      fileUrl: originalMessage.fileUrl,
+      fileName: originalMessage.fileName,
+      audioUrl: originalMessage.audioUrl,
+      isForwarded: true,
+    });
 
-    res.status(200).json({
+    await newForwardedMessage.save();
+
+    const populatedForwardedMessage = await Chat.findById(
+      newForwardedMessage._id,
+    )
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture");
+
+    res.status(201).json({
       success: true,
-      message: "Message deleted successfully",
+      message: "Request succeed",
+      data: populatedForwardedMessage,
     });
   },
 );
@@ -419,6 +530,72 @@ const reactMessage = asyncHandler(
   },
 );
 
+const sendAudioMessage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const recipientId = req.params.recipientId;
+    const senderId = req.user?.id;
+    const replyToId = req.body.replyTo;
+
+    if (!recipientId) {
+      sendError(res, 400, "Valid recipientId is required");
+      return;
+    }
+    if (!req.file) {
+      sendError(res, 404, "Audio file is required!");
+      return;
+    }
+
+    if (replyToId && !(await Chat.exists({ _id: replyToId }))) {
+      sendError(res, 404, "Message was not found");
+      return;
+    }
+
+    let audioUrl: string | undefined = undefined;
+    if (req.file) {
+      try {
+        let result = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "video",
+        });
+        audioUrl = result.secure_url;
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (err) {
+        sendError(res, 500, "Something went error");
+        return;
+      }
+    }
+    const newAudioMessage = new Chat({
+      recipient: recipientId,
+      sender: senderId,
+      audioUrl: audioUrl,
+      imageUrl: "",
+      fileUrl: "",
+      fileName: "",
+      message: "",
+      ...(replyToId ? { replyTo: replyToId } : {}),
+    });
+    await newAudioMessage.save();
+
+    const populatedMessage = await Chat.findById(newAudioMessage._id)
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
+
+    res.status(201).json({
+      success: true,
+      message: "Audio message sent successfully",
+      data: populatedMessage,
+    });
+  },
+);
+
 export {
   sendMessage,
   editMessage,
@@ -427,4 +604,7 @@ export {
   markAsRead,
   deleteMessage,
   reactMessage,
+  replyMessage,
+  forwardMessage,
+  sendAudioMessage,
 };

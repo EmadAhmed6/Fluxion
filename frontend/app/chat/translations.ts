@@ -17,9 +17,13 @@ export interface ChatTranslations {
   directMessage: string;
   back: string;
   uploadImage: string;
+  fileAttachment: string;
   unread: string;
   editMessage: string;
   editingMessage: string;
+  reply: string;
+  replyingTo: string;
+  replyDeleted: string;
   cancel: string;
   save: string;
   edited: string;
@@ -34,6 +38,17 @@ export interface ChatTranslations {
   reactionSad: string;
   reactionAngry: string;
   reactionEggs: string;
+  forwardMessage: string;
+  chooseForwardRecipient: string;
+  forwarded: string;
+  emojiPicker: string;
+  voiceMessage: string;
+  recordAudio: string;
+  stopRecording: string;
+  cancelRecording: string;
+  recording: string;
+  playAudio: string;
+  pauseAudio: string;
 }
 
 export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
@@ -55,10 +70,14 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     noUsersFound: "No users found",
     directMessage: "Message",
     back: "Back",
-    uploadImage: "Attach image",
+    uploadImage: "Attach file",
+    fileAttachment: "File attachment",
     unread: "unread",
     editMessage: "Edit message",
     editingMessage: "Editing message",
+    reply: "Reply",
+    replyingTo: "Replying to",
+    replyDeleted: "Original message was deleted",
     cancel: "Cancel",
     save: "Save",
     edited: "edited",
@@ -73,6 +92,17 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     reactionSad: "Sad",
     reactionAngry: "Angry",
     reactionEggs: "Eggs",
+    forwardMessage: "Forward message",
+    chooseForwardRecipient: "Choose someone to forward this message to",
+    forwarded: "Forwarded",
+    emojiPicker: "Add emoji",
+    voiceMessage: "Voice message",
+    recordAudio: "Record voice message",
+    stopRecording: "Stop recording",
+    cancelRecording: "Cancel recording",
+    recording: "Recording",
+    playAudio: "Play audio message",
+    pauseAudio: "Pause audio message",
   },
   ar: {
     chats: "الرسائل",
@@ -92,10 +122,14 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     noUsersFound: "لم يتم العثور على مستخدمين",
     directMessage: "مراسلة",
     back: "رجوع",
-    uploadImage: "إرفاق صورة",
+    uploadImage: "إرفاق ملف",
+    fileAttachment: "ملف مرفق",
     unread: "غير مقروءة",
     editMessage: "تعديل الرسالة",
     editingMessage: "تعديل الرسالة",
+    reply: "رد",
+    replyingTo: "الرد على",
+    replyDeleted: "تم حذف الرسالة الأصلية",
     cancel: "إلغاء",
     save: "حفظ",
     edited: "معدلة",
@@ -110,5 +144,16 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     reactionSad: "أحزنني",
     reactionAngry: "أغضبني",
     reactionEggs: "ابضنني",
+    forwardMessage: "إعادة توجيه الرسالة",
+    chooseForwardRecipient: "اختر شخصًا لإعادة توجيه الرسالة إليه",
+    forwarded: "تمت إعادة التوجيه",
+    emojiPicker: "إضافة إيموجي",
+    voiceMessage: "رسالة صوتية",
+    recordAudio: "تسجيل رسالة صوتية",
+    stopRecording: "إيقاف التسجيل",
+    cancelRecording: "إلغاء التسجيل",
+    recording: "جارٍ التسجيل",
+    playAudio: "تشغيل الرسالة الصوتية",
+    pauseAudio: "إيقاف الرسالة الصوتية مؤقتًا",
   },
 };
