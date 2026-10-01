@@ -26,6 +26,9 @@ interface IUser extends Document, IUserSchema {
   provider: "local" | "google" | "github";
   following: Types.ObjectId[];
   followers: Types.ObjectId[];
+  blockUsers: Types.ObjectId[];
+  blockedByUsers: Types.ObjectId[];
+  isBlocked: boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -113,6 +116,22 @@ const userSchema = new Schema<IUser>(
       },
     ],
     followers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    blockUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    blockedByUsers: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",

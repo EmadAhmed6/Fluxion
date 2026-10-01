@@ -37,7 +37,18 @@ export interface ProfileTranslations {
   noFollowing: string;
   searchUsers: string;
   noUsersFound: string;
+  blockUser: string;
+  unblockUser: string;
+  confirmBlockTitle: string;
+  confirmBlockMessage: string;
+  blockedProfileTitle: string;
+  blockedProfileMessage: string;
+  blockedUsers: string;
+  blockedUsersModalTitle: string;
+  noBlockedUsers: string;
+  blockedUsersLoadError: string;
 }
+
 
 export const profileTranslations: Record<Language, ProfileTranslations> = {
   en: {
@@ -77,6 +88,16 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     noFollowing: "Not following anyone yet.",
     searchUsers: "Search users...",
     noUsersFound: "No users found matching your search.",
+    blockUser: "Block User",
+    unblockUser: "Unblock User",
+    confirmBlockTitle: "Block User",
+    confirmBlockMessage: "Are you sure you want to block this user? They will not be able to view your profile, posts, or send you messages.",
+    blockedProfileTitle: "Profile Unavailable",
+    blockedProfileMessage: "You cannot view this profile or posts due to block settings.",
+    blockedUsers: "Blocked Users",
+    blockedUsersModalTitle: "People you have blocked",
+    noBlockedUsers: "You haven't blocked anyone yet.",
+    blockedUsersLoadError: "Couldn't load your blocked users. Please try again.",
   },
   ar: {
     userProfile: "الملف الشخصي",
@@ -115,6 +136,15 @@ export const profileTranslations: Record<Language, ProfileTranslations> = {
     noFollowing: "لا يتابع أي شخص حتى الآن.",
     searchUsers: "البحث في القائمة...",
     noUsersFound: "لم يتم العثور على أي مستخدم مطابق.",
+    blockUser: "حظر المستخدم",
+    unblockUser: "إلغاء الحظر",
+    confirmBlockTitle: "حظر المستخدم",
+    confirmBlockMessage: "هل أنت متأكد من حظر هذا المستخدم؟ لن يتمكن من رؤية بروفايلك أو بوستاتك أو إرسال رسائل لك.",
+    blockedProfileTitle: "الملف الشخصي غير متاح",
+    blockedProfileMessage: "لا يمكنك رؤية هذا البروفايل أو المنشورات بسبب إعدادات الحظر.",
+    blockedUsers: "المحظورون",
+    blockedUsersModalTitle: "الأشخاص الذين حظرتهم",
+    noBlockedUsers: "لم تحظر أي شخص حتى الآن.",
+    blockedUsersLoadError: "تعذر تحميل قائمة المحظورين. حاول مرة أخرى.",
   },
 };
-

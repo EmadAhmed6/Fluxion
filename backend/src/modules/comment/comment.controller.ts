@@ -108,6 +108,30 @@ const createComment = asyncHandler(
       return;
     }
 
+    const currentUserId = (req as any).user?.id;
+    if (currentUserId && post.user) {
+      const authorId = post.user.toString();
+      if (authorId !== currentUserId) {
+        const currentUser = await User.findById(currentUserId);
+        const postOwner = await User.findById(authorId);
+        if (currentUser && postOwner) {
+          const isBlockedByMe = currentUser.blockUsers?.some(
+            (id) => id.toString() === authorId,
+          );
+          const hasBlockedMe = postOwner.blockUsers?.some(
+            (id) => id.toString() === currentUserId,
+          );
+          if (isBlockedByMe || hasBlockedMe) {
+            res.status(403).json({
+              success: false,
+              message: "You cannot comment on this post due to block status",
+            });
+            return;
+          }
+        }
+      }
+    }
+
     let commentImage: { url: string; publicId: string | null } = {
       url: "",
       publicId: "",
@@ -138,8 +162,6 @@ const createComment = asyncHandler(
     );
 
     await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
-
-    const currentUserId = req.user?.id as string;
 
     if (post.user.toString() !== currentUserId) {
       await Notification.create({

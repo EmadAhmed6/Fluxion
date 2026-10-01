@@ -17,7 +17,11 @@ export const useSendMessage = () => {
       });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Failed to send message.");
+      const message =
+        err?.response?.data?.data?.message ||
+        err?.response?.data?.message ||
+        "Failed to send message.";
+      toast.error(message);
     },
   });
 };

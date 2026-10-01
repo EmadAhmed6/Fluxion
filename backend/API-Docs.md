@@ -72,36 +72,39 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 19  | PUT    | `/users/:userId/follow`                                           | Toggle follow/unfollow a user                                    |  🔒  | 🔒 100 req/15min |
 | 20  | GET    | `/users/:userId/followers`                                        | Retrieve the list of followers for a user                        |  🔒  | 🔒 100 req/15min |
 | 21  | GET    | `/users/:userId/following`                                        | Retrieve the list of users a user is following                   |  🔒  | 🔒 100 req/15min |
-| 22  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
-| 23  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
-| 24  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
-| 25  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
-| 26  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
-| 27  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
-| 28  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
-| 29  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
-| 30  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
-| 31  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
-| 32  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
-| 33  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
-| 34  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
-| 35  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
-| 36  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
-| 37  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
-| 38  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
-| 39  | GET    | `/notifications`                                                  | Retrieve all notifications for authenticated user                |  🔒  |        —         |
-| 40  | PATCH  | `/notifications`                                                  | Mark all notifications as read for authenticated user            |  🔒  |        —         |
-| 41  | PATCH  | `/notifications/:notificationId`                                  | Mark a specific notification as read                             |  🔒  |        —         |
-| 42  | GET    | `/chat/conversations`                                             | Retrieve conversations, latest message, and unread counts        |  🔒  |        —         |
-| 43  | POST   | `/chat/:recipientId/send`                                         | Send text with an optional image or file attachment               |  🔒  |        —         |
-| 44  | POST   | `/chat/:recipientId/audio`                                        | Send a voice message, optionally as a reply                       |  🔒  |        —         |
-| 45  | POST   | `/chat/:recipientId/:messageId/reply`                             | Reply with text and/or an optional file                            |  🔒  |        —         |
-| 46  | POST   | `/chat/:recipientId/:messageId/forward`                           | Forward an existing message to another user                       |  🔒  |        —         |
-| 47  | GET    | `/chat/:userId`                                                   | Retrieve conversation history and mark incoming messages read    |  🔒  |        —         |
-| 48  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
-| 49  | PATCH  | `/chat/:messageId/react`                                          | Add, change, or remove a reaction on a message                    |  🔒  |        —         |
-| 50  | PATCH  | `/chat/:messageId`                                                | Edit a message's text (sender only)                               |  🔒  |        —         |
-| 51  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
+| 22  | GET    | `/users/blocked-users`                                             | Retrieve the authenticated user's blocked users                  |  🔒  | 🔒 100 req/15min |
+| 23  | PATCH  | `/users/:userId/block`                                             | Block a user and remove follow relationships                     |  🔒  | 🔒 100 req/15min |
+| 24  | PATCH  | `/users/:userId/unblock`                                           | Unblock a previously blocked user                                |  🔒  | 🔒 100 req/15min |
+| 25  | GET    | `/posts`                                                          | Retrieve all blog posts with populated user, likes, and shares   |  🔒  | 🔒 100 req/15min |
+| 26  | POST   | `/posts`                                                          | Create a new blog post with postImage metadata                   |  🔒  | 🔒 100 req/15min |
+| 27  | POST   | `/posts/:postId/share`                                            | Share an existing post & update shares count                     |  🔒  | 🔒 100 req/15min |
+| 28  | GET    | `/posts/:postId`                                                  | Retrieve detailed view of a single post by ID                    |  🔒  | 🔒 100 req/15min |
+| 29  | PUT    | `/posts/:postId`                                                  | Update title, description, category, or postImage of a post      |  🔒  | 🔒 100 req/15min |
+| 30  | DELETE | `/posts/:postId`                                                  | Delete a post and clear its associated media                     |  🔒  | 🔒 100 req/15min |
+| 31  | PUT    | `/posts/:postId/like`                                             | Toggle like/unlike status on a blog post                         |  🔒  | 🔒 100 req/15min |
+| 32  | GET    | `/posts/:postId/comments`                                         | Retrieve comments for a post                                     |  🔒  | 🔒 100 req/15min |
+| 33  | POST   | `/posts/:postId/comments`                                         | Post a new comment (with optional commentImage)                  |  🔒  | 🔒 100 req/15min |
+| 34  | PUT    | `/posts/:postId/comments/:commentId/like`                         | Toggle like/unlike on a comment                                  |  🔒  | 🔒 100 req/15min |
+| 35  | PUT    | `/posts/:postId/comments/:commentId`                              | Update text or commentImage of a comment                         |  🔒  | 🔒 100 req/15min |
+| 36  | DELETE | `/posts/:postId/comments/:commentId`                              | Remove comment & decrement commentsCount on post                 |  🔒  | 🔒 100 req/15min |
+| 37  | GET    | `/posts/:postId/comments/:commentId/replies`                      | Get all replies for a parent comment                             |  🔒  | 🔒 100 req/15min |
+| 38  | POST   | `/posts/:postId/comments/:commentId/replies`                      | Create a reply under a parent comment (with optional replyImage) |  🔒  | 🔒 100 req/15min |
+| 39  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Update text content or replyImage of a reply comment             |  🔒  | 🔒 100 req/15min |
+| 40  | DELETE | `/posts/:postId/comments/:commentId/replies/:replyCommentId`      | Remove reply comment & decrement replyCommentsCount              |  🔒  | 🔒 100 req/15min |
+| 41  | PUT    | `/posts/:postId/comments/:commentId/replies/:replyCommentId/like` | Toggle like/unlike on a reply comment                            |  🔒  | 🔒 100 req/15min |
+| 42  | GET    | `/notifications`                                                  | Retrieve all notifications for authenticated user                |  🔒  |        —         |
+| 43  | PATCH  | `/notifications`                                                  | Mark all notifications as read for authenticated user            |  🔒  |        —         |
+| 44  | PATCH  | `/notifications/:notificationId`                                  | Mark a specific notification as read                             |  🔒  |        —         |
+| 45  | GET    | `/chat/conversations`                                             | Retrieve conversations, latest message, and unread counts        |  🔒  |        —         |
+| 46  | POST   | `/chat/:recipientId/send`                                         | Send text with an optional image or file attachment               |  🔒  |        —         |
+| 47  | POST   | `/chat/:recipientId/audio`                                        | Send a voice message, optionally as a reply                       |  🔒  |        —         |
+| 48  | POST   | `/chat/:recipientId/:messageId/reply`                             | Reply with text and/or an optional file                            |  🔒  |        —         |
+| 49  | POST   | `/chat/:recipientId/:messageId/forward`                           | Forward an existing message to another user                       |  🔒  |        —         |
+| 50  | GET    | `/chat/:userId`                                                   | Retrieve conversation history and mark incoming messages read    |  🔒  |        —         |
+| 51  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
+| 52  | PATCH  | `/chat/:messageId/react`                                          | Add, change, or remove a reaction on a message                    |  🔒  |        —         |
+| 53  | PATCH  | `/chat/:messageId`                                                | Edit a message's text (sender only)                               |  🔒  |        —         |
+| 54  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
 
 ---
 
@@ -110,6 +113,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 - [Authentication Endpoints](#authentication-endpoints)
 - [User Management Endpoints](#user-management-endpoints)
   - [Follow Feature](#follow-feature)
+  - [Block Feature](#block-feature)
 - [Post Management Endpoints](#post-management-endpoints)
 - [Comment Management Endpoints](#comment-management-endpoints)
 - [Notification Management Endpoints](#notification-management-endpoints)
@@ -627,6 +631,20 @@ Not authorized.
 ```json
 {
   "message": "Invalid token"
+}
+```
+
+##### Response 403
+
+The authenticated user or the target user has blocked the other. Profile details and posts are unavailable while the block is active.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "You cannot access this profile due to block status"
+  }
 }
 ```
 
@@ -1202,6 +1220,163 @@ User was not found.
   "message": "User not found"
 }
 ```
+
+---
+
+## Block Feature
+
+### GET /users/blocked-users 🔒
+
+Retrieve the authenticated user's blocked users. Each entry includes the user's ID, name, username, job title, and profile picture.
+
+#### Responses
+
+##### Response 200
+
+```json
+{
+  "success": true,
+  "message": "Blocked users fetched successfully",
+  "data": {
+    "blockedUsers": [
+      {
+        "_id": "65f1a2b3c4d5e6f789012345",
+        "fullName": "Ahmed Mohamed",
+        "username": "ahmed",
+        "jobTitle": "Full Stack Engineer",
+        "profilePicture": {
+          "url": "https://res.cloudinary.com/example/image/upload/profile.jpg",
+          "publicId": "profile_picture_123"
+        }
+      }
+    ]
+  }
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+The authenticated user was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "User not found"
+  }
+}
+```
+
+---
+
+### PATCH /users/:userId/block 🔒
+
+Block the specified user. This also removes any follow relationship between both users and deletes notifications between them. Blocking does not restore follow relationships if the user is later unblocked.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                    |
+| :-------- | :----- | :------: | :----------------------------- |
+| `userId`  | string |    ✅    | The ID of the user to block.   |
+
+#### Responses
+
+##### Response 200
+
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "message": "User blocked successfully"
+  }
+}
+```
+
+##### Response 400
+
+The user is already blocked.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "User is already blocked"
+  }
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+##### Response 403
+
+The authenticated user cannot block themselves.
+
+##### Response 404
+
+The target user or authenticated user was not found.
+
+---
+
+### PATCH /users/:userId/unblock 🔒
+
+Remove the block placed by the authenticated user on the specified user. This does not restore any follow relationships that were removed when the block was created.
+
+#### Path Parameters
+
+| Parameter | Type   | Required | Description                      |
+| :-------- | :----- | :------: | :------------------------------- |
+| `userId`  | string |    ✅    | The ID of the user to unblock.  |
+
+#### Responses
+
+##### Response 200
+
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "message": "User unblocked successfully"
+  }
+}
+```
+
+##### Response 400
+
+The target user is not currently blocked.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": {
+    "message": "User is not blocked"
+  }
+}
+```
+
+##### Response 401
+
+Not authorized.
+
+##### Response 404
+
+The target user or authenticated user was not found.
 
 ---
 

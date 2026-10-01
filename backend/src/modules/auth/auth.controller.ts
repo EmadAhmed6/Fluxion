@@ -16,6 +16,7 @@ import {
   generateResetPasswordEmailHtml,
   sendEmail,
 } from "../../config/Email.js";
+import { sendError } from "../../middlewares/errors.js";
 
 // REGISTER USER
 const register = asyncHandler(

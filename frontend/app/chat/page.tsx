@@ -1077,7 +1077,7 @@ function ChatContent() {
                             ) : isAudioOnly ? (
                               <div className="w-fit px-1 py-1">
                                 <ChatAudioPlayer
-                                  src={audioSrc}
+                                  src={audioSrc || ""}
                                   playLabel={t.chat.playAudio}
                                   pauseLabel={t.chat.pauseAudio}
                                 />
@@ -1142,7 +1142,7 @@ function ChatContent() {
 
                                 {hasAudio && (
                                   <ChatAudioPlayer
-                                    src={audioSrc}
+                                    src={audioSrc || ""}
                                     playLabel={t.chat.playAudio}
                                     pauseLabel={t.chat.pauseAudio}
                                   />

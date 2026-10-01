@@ -10,6 +10,9 @@ import {
   toggleFollowUser,
   getUserFollowers,
   getUserFollowing,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
 } from "./user.controller.js";
 import {
   verifyToken,
@@ -21,6 +24,7 @@ import { authLimiter } from "../../middlewares/limiter.js";
 const router = express.Router();
 
 router.route("/").get(verifyToken, getAllUsers);
+router.get("/blocked-users", verifyToken, getBlockedUsers);
 router.patch("/:userId/toggle-admin", verifySuperAdminToken, toggleAdminStatus);
 router
   .route("/:userId")
@@ -32,6 +36,9 @@ router.delete(
   verifyAuthorizedToken,
   deleteProfileImage,
 );
+
+router.patch("/:userId/block", verifyToken, blockUser);
+router.patch("/:userId/unblock", verifyToken, unblockUser);
 
 router.post(
   "/:userId/change-password",

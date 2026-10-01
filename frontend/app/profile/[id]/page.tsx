@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Cookies from "js-cookie";
@@ -15,6 +16,8 @@ import {
   useDeleteProfileImage,
   useDeleteUser,
   useToggleFollowUser,
+  useBlockUser,
+  useUnblockUser,
 } from "@/_features/user/hooks";
 import { useGetPosts } from "@/_features/posts/hooks";
 import { useGetAuthMeQuery } from "@/_features/auth/hooks";
@@ -38,11 +41,14 @@ import {
   UserPlus,
   X,
   MessageSquare,
+  Ban,
 } from "lucide-react";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
+import BlockConfirmModal from "@/_components/BlockConfirmModal";
 import ChangePasswordModal from "@/_components/ChangePasswordModal";
 import FollowersModal, { FollowModalTab } from "@/_components/FollowersModal";
+import BlockedUsersModal from "@/_components/BlockedUsersModal";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/_components/Text";
 import { Post } from "@/_features/posts/types/Post";
@@ -66,16 +72,26 @@ export default function UserProfilePage() {
     routeUserId === "me" ||
     (currentUser && String(currentUser._id) === String(targetUserId));
 
-  const { data: profileUser, isLoading: isUserLoading } =
-    useGetUserProfile(targetUserId);
+  const isBlockedByMe = Boolean(
+    currentUser?.blockUsers?.some(
+      (id: any) =>
+        String(typeof id === "string" ? id : id?._id || id?.id) ===
+        String(targetUserId),
+    ),
+  );
+
+  const { data: profileUser, isLoading: isUserLoading, error: profileUserError } =
+    useGetUserProfile(targetUserId, !isBlockedByMe);
   const { data: userPosts, isLoading: isPostsLoading } = useGetPosts({
     userId: targetUserId,
-  });
+  }, !isBlockedByMe);
 
   const uploadProfileMutation = useUploadProfilePicture(targetUserId);
   const deleteProfileImageMutation = useDeleteProfileImage(targetUserId);
   const deleteUserMutation = useDeleteUser();
   const toggleFollowMutation = useToggleFollowUser(targetUserId);
+  const blockUserMutation = useBlockUser(targetUserId);
+  const unblockUserMutation = useUnblockUser(targetUserId);
 
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -84,15 +100,19 @@ export default function UserProfilePage() {
     useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
   const [isDeletePhotoModalOpen, setIsDeletePhotoModalOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [isBlockedUsersModalOpen, setIsBlockedUsersModalOpen] = useState(false);
   const [followModalTab, setFollowModalTab] =
     useState<FollowModalTab>("followers");
   const [isFollowHovered, setIsFollowHovered] = useState(false);
+  const [isActionsDropdownOpen, setIsActionsDropdownOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
+  const actionsDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -114,6 +134,23 @@ export default function UserProfilePage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isAvatarMenuOpen]);
+
+  useEffect(() => {
+    function handleActionsClickOutside(event: MouseEvent) {
+      if (
+        actionsDropdownRef.current &&
+        !actionsDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsActionsDropdownOpen(false);
+      }
+    }
+    if (isActionsDropdownOpen) {
+      document.addEventListener("mousedown", handleActionsClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleActionsClickOutside);
+    };
+  }, [isActionsDropdownOpen]);
 
   const userToDisplay =
     profileUser || (isOwnProfile ? currentUser : null) || currentUser;
@@ -260,13 +297,50 @@ export default function UserProfilePage() {
       )
     : "";
 
+  if (!isOwnProfile && (isBlockedByMe || profileUserError)) {
+    return (
+      <div className="min-h-screen bg-bgPrimary text-textPrimary flex flex-col justify-between">
+        <Navbar />
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-16 flex items-center justify-center">
+          <div className="rounded-3xl bg-bgSecondary/80 border border-borderPrimary/60 p-8 md:p-12 text-center max-w-lg w-full shadow-2xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center mx-auto">
+              <Ban className="h-8 w-8" />
+            </div>
+            <Text as="h2" size="xl" font="bold" color="primary">
+              {t.profile.blockedProfileTitle}
+            </Text>
+            <Text as="p" size="sm" color="secondary" className="leading-relaxed text-xs md:text-sm">
+              {t.profile.blockedProfileMessage}
+            </Text>
+            {isBlockedByMe && (
+              <div className="pt-4">
+                <Button
+                  onClick={() => unblockUserMutation.mutate(targetUserId)}
+                  disabled={unblockUserMutation.isPending}
+                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-5 text-xs font-semibold cursor-pointer flex items-center gap-2 mx-auto"
+                >
+                  {unblockUserMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Ban className="h-4 w-4" />
+                  )}
+                  <span>{t.profile.unblockUser}</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-bgPrimary text-textPrimary flex flex-col justify-between">
       <Navbar />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         {/* User Hero Header Card */}
-        <div className="relative rounded-3xl bg-bgSecondary/60 border border-borderPrimary/50 p-6 md:p-10 mb-10 overflow-hidden shadow-xl">
+        <div className="relative rounded-3xl bg-bgSecondary/60 border border-borderPrimary/50 p-6 md:p-10 mb-10 overflow-visible shadow-xl">
           <div className="absolute top-0 ltr:right-0 rtl:left-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
           {isUserLoading ? (
@@ -486,9 +560,9 @@ export default function UserProfilePage() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
-                    {/* Follow / Unfollow Button for other users */}
-                    {!isOwnProfile && targetUserId && (
-                      <div className="flex items-center gap-2">
+                    {/* ── Primary: Follow + Message (other users only) ── */}
+                    {!isOwnProfile && targetUserId && !isBlockedByMe && (
+                      <>
                         <Button
                           onClick={handleToggleFollow}
                           variant={isFollowing ? "outline" : "default"}
@@ -536,84 +610,146 @@ export default function UserProfilePage() {
                             <span>{t.chat.directMessage}</span>
                           </Button>
                         </Link>
-                      </div>
+                      </>
                     )}
 
-
-                    {/* Edit Profile — hidden from admins on SuperAdmin profiles */}
+                    {/* ── More-Actions dropdown (⋮) ── */}
                     {(isOwnProfile ||
-                      currentUser?.role === "SuperAdmin" ||
-                      (currentUser?.role === "Admin" &&
-                        userToDisplay?.role !== "SuperAdmin")) && (
-                      <Button
-                        onClick={handleOpenEditModal}
-                        variant="outline"
-                        size="sm"
-                        className="group/editBtn rounded-xl border border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 text-xs flex items-center gap-1.5 cursor-pointer hover:shadow-md hover:scale-105 active:scale-95"
-                      >
-                        <Edit className="h-3.5 w-3.5 text-textPrimary group-hover/editBtn:text-primary transition-colors" />
-                        <Text
-                          as="span"
-                          size="xs"
-                          font="semiBold"
-                          color="primary"
-                          className="group-hover/editBtn:text-primary transition-colors"
-                        >
-                          {t.profile.editProfile}
-                        </Text>
-                      </Button>
-                    )}
-
-                    {/* Change Password — strictly visible ONLY to local account owner */}
-                    {isOwnProfile &&
-                      (!userToDisplay?.provider ||
-                        userToDisplay?.provider === "local") && (
-                        <Button
-                          onClick={() => setIsChangePasswordModalOpen(true)}
-                          variant="outline"
-                          size="sm"
-                          className="group/pwdBtn rounded-xl border border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 text-xs flex items-center gap-1.5 cursor-pointer hover:shadow-md hover:scale-105 active:scale-95"
-                        >
-                          <KeyRound className="h-3.5 w-3.5 text-textPrimary group-hover/pwdBtn:text-primary transition-colors" />
-                          <Text
-                            as="span"
-                            size="xs"
-                            font="semiBold"
-                            color="primary"
-                            className="group-hover/pwdBtn:text-primary transition-colors"
+                      !isOwnProfile ||
+                      currentUser?.role === "Admin" ||
+                      currentUser?.role === "SuperAdmin") &&
+                      (isOwnProfile
+                        ? true
+                        : !isOwnProfile && targetUserId) && (
+                        <div className="relative" ref={actionsDropdownRef}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setIsActionsDropdownOpen((prev) => !prev)
+                            }
+                            className="rounded-xl text-xs flex items-center gap-1.5 cursor-pointer border-borderPrimary hover:border-primary/50 hover:bg-primary/10 transition-all hover:scale-105 active:scale-95 shadow-xs"
+                            aria-label="More actions"
                           >
-                            {t.profile.changePassword}
-                          </Text>
-                        </Button>
-                      )}
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
 
-                    {/* Delete User — hidden from admins on SuperAdmin profiles */}
-                    {(isOwnProfile ||
-                      currentUser?.role === "SuperAdmin" ||
-                      (currentUser?.role === "Admin" &&
-                        userToDisplay?.role !== "SuperAdmin")) && (
-                      <Button
-                        onClick={() => setIsDeleteUserModalOpen(true)}
-                        variant="destructive"
-                        size="sm"
-                        disabled={deleteUserMutation.isPending}
-                        className="group/delBtn rounded-xl text-xs flex items-center gap-1.5 cursor-pointer bg-rose-500/15 border border-rose-500/30 hover:bg-rose-600 transition-all"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-700 group-hover/delBtn:text-white transition-colors" />
-                        <Text
-                          as="span"
-                          size="xs"
-                          font="semiBold"
-                          className="text-rose-700 group-hover/delBtn:text-white transition-colors"
-                        >
-                          {isOwnProfile
-                            ? isArabic
-                              ? "مسح الحساب"
-                              : "Delete Account"
-                            : t.admin.deleteUser}
-                        </Text>
-                      </Button>
-                    )}
+                          {isActionsDropdownOpen && (
+                            <div className="absolute z-50 mt-2 w-52 rounded-2xl border border-borderPrimary bg-cardBackground shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 right-0">
+                              {/* Edit Profile */}
+                              {(isOwnProfile ||
+                                currentUser?.role === "SuperAdmin" ||
+                                (currentUser?.role === "Admin" &&
+                                  userToDisplay?.role !== "SuperAdmin")) && (
+                                <button
+                                  onClick={() => {
+                                    handleOpenEditModal();
+                                    setIsActionsDropdownOpen(false);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-textPrimary hover:bg-primary/8 hover:text-primary transition-colors group cursor-pointer"
+                                >
+                                  <Edit className="h-3.5 w-3.5 text-textSecondary group-hover:text-primary transition-colors" />
+                                  <span>{t.profile.editProfile}</span>
+                                </button>
+                              )}
+
+                              {/* Change Password */}
+                              {isOwnProfile &&
+                                (!userToDisplay?.provider ||
+                                  userToDisplay?.provider === "local") && (
+                                  <button
+                                    onClick={() => {
+                                      setIsChangePasswordModalOpen(true);
+                                      setIsActionsDropdownOpen(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-textPrimary hover:bg-primary/8 hover:text-primary transition-colors group cursor-pointer"
+                                  >
+                                    <KeyRound className="h-3.5 w-3.5 text-textSecondary group-hover:text-primary transition-colors" />
+                                    <span>{t.profile.changePassword}</span>
+                                  </button>
+                                )}
+
+                              {isOwnProfile && (
+                                <button
+                                  onClick={() => {
+                                    setIsBlockedUsersModalOpen(true);
+                                    setIsActionsDropdownOpen(false);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-textPrimary hover:bg-primary/8 hover:text-primary transition-colors group cursor-pointer"
+                                >
+                                  <Ban className="h-3.5 w-3.5 text-textSecondary group-hover:text-primary transition-colors" />
+                                  <span>{t.profile.blockedUsers}</span>
+                                </button>
+                              )}
+
+                              {/* Block / Unblock — only for other users */}
+                              {!isOwnProfile && targetUserId && (
+                                <>
+                                  <div className="h-px bg-borderPrimary/60 mx-3 my-0.5" />
+                                  <button
+                                    onClick={() => {
+                                      if (isBlockedByMe) {
+                                        unblockUserMutation.mutate(targetUserId);
+                                      } else {
+                                        setIsBlockModalOpen(true);
+                                      }
+                                      setIsActionsDropdownOpen(false);
+                                    }}
+                                    disabled={
+                                      blockUserMutation.isPending ||
+                                      unblockUserMutation.isPending
+                                    }
+                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium transition-colors group ${
+                                      isBlockedByMe
+                                        ? "text-amber-500 hover:bg-amber-500/10"
+                                        : "text-rose-500 hover:bg-rose-500/10"
+                                    } cursor-pointer`}
+                                  >
+                                    {blockUserMutation.isPending ||
+                                    unblockUserMutation.isPending ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Ban className="h-3.5 w-3.5" />
+                                    )}
+                                    <span>
+                                      {isBlockedByMe
+                                        ? t.profile.unblockUser
+                                        : t.profile.blockUser}
+                                    </span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Delete User / Account */}
+                              {(isOwnProfile ||
+                                currentUser?.role === "SuperAdmin" ||
+                                (currentUser?.role === "Admin" &&
+                                  userToDisplay?.role !== "SuperAdmin")) && (
+                                <>
+                                  <div className="h-px bg-borderPrimary/60 mx-3 my-0.5" />
+                                  <button
+                                    onClick={() => {
+                                      setIsDeleteUserModalOpen(true);
+                                      setIsActionsDropdownOpen(false);
+                                    }}
+                                    disabled={deleteUserMutation.isPending}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-rose-500 hover:bg-rose-500/10 transition-colors group cursor-pointer"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <span>
+                                      {isOwnProfile
+                                        ? isArabic
+                                          ? "مسح الحساب"
+                                          : "Delete Account"
+                                        : t.admin.deleteUser}
+                                    </span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -798,6 +934,17 @@ export default function UserProfilePage() {
         />
       )}
 
+      {/* Block Confirm Modal */}
+      <BlockConfirmModal
+        isOpen={isBlockModalOpen}
+        onClose={() => setIsBlockModalOpen(false)}
+        onConfirm={async () => {
+          await blockUserMutation.mutateAsync(targetUserId);
+          setIsBlockModalOpen(false);
+        }}
+        isPending={blockUserMutation.isPending}
+      />
+
       {/* Followers & Following Modal */}
       {targetUserId && (
         <FollowersModal
@@ -811,6 +958,13 @@ export default function UserProfilePage() {
               setFollowingCountDelta((prev) => prev - 1);
             }
           }}
+        />
+      )}
+
+      {isOwnProfile && (
+        <BlockedUsersModal
+          isOpen={isBlockedUsersModalOpen}
+          onClose={() => setIsBlockedUsersModalOpen(false)}
         />
       )}
     </div>

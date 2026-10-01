@@ -41,15 +41,15 @@ const ChatSchema = new Schema(
     },
     imageUrl: {
       type: String,
-      default: false,
+      default: "",
     },
     fileUrl: {
       type: String,
-      default: false,
+      default: "",
     },
     fileName: {
       type: String,
-      default: false,
+      default: "",
     },
     audioUrl: {
       type: String,

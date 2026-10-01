@@ -2,6 +2,9 @@
 // GET    /users/{userId}
 // PUT    /users/{userId}
 // PATCH  /users/{userId}/toggle-admin
+// PATCH  /users/{userId}/block
+// PATCH  /users/{userId}/unblock
+// GET    /users/blocked-users
 // POST   /users/{userId}/change-password
 // DELETE /users/{userId}
 // DELETE /users/{userId}/profile-image
@@ -46,6 +49,163 @@
  *         description: Too many requests, please try again later
  */
 
+// GET    /users/blocked-users
+/**
+ * @swagger
+ * /users/blocked-users:
+ *   get:
+ *     summary: Get the authenticated user's blocked users
+ *     description: Retrieve the users blocked by the authenticated user, including basic profile information.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Blocked users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Blocked users fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     blockedUsers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                             example: 65f1a2b3c4d5e6f789012345
+ *                           fullName:
+ *                             type: string
+ *                             example: Ahmed Mohamed
+ *                           username:
+ *                             type: string
+ *                             example: ahmed
+ *                           jobTitle:
+ *                             type: string
+ *                             example: Full Stack Engineer
+ *                           profilePicture:
+ *                             type: object
+ *                             properties:
+ *                               url:
+ *                                 type: string
+ *                                 example: https://res.cloudinary.com/example/image/upload/profile.jpg
+ *                               publicId:
+ *                                 type: string
+ *                                 nullable: true
+ *                                 example: profile_picture_123
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: Authenticated user not found
+ */
+
+// PATCH  /users/{userId}/block
+/**
+ * @swagger
+ * /users/{userId}/block:
+ *   patch:
+ *     summary: Block a user
+ *     description: Block the target user, remove follow relationships between both users, and delete notifications between them. Unblocking does not restore removed follow relationships.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user to block
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: User blocked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request processed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: User blocked successfully
+ *       400:
+ *         description: User is already blocked
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Cannot block yourself
+ *       404:
+ *         description: Target user or authenticated user not found
+ */
+
+// PATCH  /users/{userId}/unblock
+/**
+ * @swagger
+ * /users/{userId}/unblock:
+ *   patch:
+ *     summary: Unblock a user
+ *     description: Remove the block placed by the authenticated user on the target user. This does not restore follow relationships removed when the block was created.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user to unblock
+ *         schema:
+ *           type: string
+ *           example: 65f1a2b3c4d5e6f789012345
+ *     responses:
+ *       200:
+ *         description: User unblocked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request processed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: User unblocked successfully
+ *       400:
+ *         description: User is not blocked
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: Target user or authenticated user not found
+ */
+
 // GET    /users/{userId}
 /**
  * @swagger
@@ -80,6 +240,8 @@
  *                   $ref: '#/components/schemas/User'
  *       401:
  *         description: Not authorized
+ *       403:
+ *         description: Profile cannot be accessed because either user has blocked the other
  *       404:
  *         description: User not found
  */

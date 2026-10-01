@@ -6,6 +6,7 @@ import fs from "fs";
 import { Types } from "mongoose";
 import { sendError } from "../../middlewares/errors.js";
 import { file } from "zod";
+import { User } from "../user/user.model.js";
 
 // SEND MESSAGE
 const sendMessage = asyncHandler(
@@ -48,6 +49,18 @@ const sendMessage = asyncHandler(
       } catch (err) {
         console.error("Cloudinary upload error in chat:", err);
       }
+    }
+
+    const recipient = await User.findById(recipientId);
+    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
+    }
+
+    const sender = await User.findById(senderId);
+    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
     }
     const newMessage = new Chat({
       sender: senderId,
@@ -346,6 +359,18 @@ const replyMessage = asyncHandler(
       }
     }
 
+    const recipient = await User.findById(recipientId);
+    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
+    }
+
+    const sender = await User.findById(senderId);
+    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
+    }
+
     const newReplyMessage = new Chat({
       sender: senderId,
       recipient: recipientId,
@@ -396,6 +421,18 @@ const forwardMessage = asyncHandler(
     const originalMessage = await Chat.findById(messageId);
     if (!originalMessage) {
       sendError(res, 404, "message was not fonud");
+      return;
+    }
+
+    const recipient = await User.findById(recipientId);
+    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
+    }
+
+    const sender = await User.findById(senderId);
+    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 
@@ -547,6 +584,18 @@ const sendAudioMessage = asyncHandler(
 
     if (replyToId && !(await Chat.exists({ _id: replyToId }))) {
       sendError(res, 404, "Message was not found");
+      return;
+    }
+
+    const recipient = await User.findById(recipientId);
+    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
+      return;
+    }
+
+    const sender = await User.findById(senderId);
+    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+      sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 

@@ -9,6 +9,7 @@ import {
 import fs from "fs";
 import bcrypt from "bcryptjs";
 import Notification from "../notifications/notifications.model.js";
+import { sendError } from "../../middlewares/errors.js";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
@@ -39,6 +40,20 @@ const getAllUsers = asyncHandler(
       query.provider = provider;
     }
 
+    const currentUserId = req.user?.id;
+    if (currentUserId) {
+      const currentUser = await User.findById(currentUserId);
+      if (currentUser) {
+        const blockedIds = [
+          ...(currentUser.blockUsers || []).map((id) => id.toString()),
+          ...(currentUser.blockedByUsers || []).map((id) => id.toString()),
+        ];
+        if (blockedIds.length > 0) {
+          query._id = { $nin: blockedIds };
+        }
+      }
+    }
+
     const users = await User.find(query)
       .skip((pageNumber - 1) * userPerPage)
       .limit(userPerPage)
@@ -65,7 +80,10 @@ const getAllUsers = asyncHandler(
 // GET USER BY ID
 const getUserById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const user = await User.findById(req.params.userId)
+    const targetUserId = req.params.userId;
+    const currentUserId = req.user?.id;
+
+    const user = await User.findById(targetUserId)
       .select("-password")
       .populate({
         path: "posts",
@@ -137,6 +155,29 @@ const getUserById = asyncHandler(
           },
         ],
       });
+
+    if (!user) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    if (currentUserId && currentUserId !== targetUserId) {
+      const currentUser = await User.findById(currentUserId);
+      if (currentUser) {
+        const isBlockedByMe = currentUser.blockUsers?.some(
+          (id) => id.toString() === targetUserId,
+        );
+        const hasBlockedMe = user.blockUsers?.some(
+          (id) => id.toString() === currentUserId,
+        );
+
+        if (isBlockedByMe || hasBlockedMe) {
+          sendError(res, 403, "You cannot access this profile due to block status");
+          return;
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
@@ -428,6 +469,21 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
+  const isBlockedByMe = currentUser.blockUsers?.some(
+    (id) => id.toString() === targetUserId,
+  );
+  const hasBlockedMe = targetUser.blockUsers?.some(
+    (id) => id.toString() === currentUserId,
+  );
+  if (isBlockedByMe || hasBlockedMe) {
+    res.status(403).json({
+      success: false,
+      message: "Request failed",
+      data: { message: "You cannot follow this user due to block status" },
+    });
+    return;
+  }
+
   const isFollowing =
     currentUser.following?.some((id) => id.toString() === targetUserId) ||
     false;
@@ -458,7 +514,7 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
     await User.findByIdAndUpdate(targetUserId, {
       $addToSet: { followers: currentUserId },
     });
-    
+
     await Notification.create({
       recipient: targetUserId,
       sender: currentUserId,
@@ -478,6 +534,7 @@ const toggleFollowUser = asyncHandler(async (req: Request, res: Response) => {
 const getUserFollowing = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.params.userId as string;
+    const currentUserId = req.user?.id;
     const user = await User.findById(userId).populate({
       path: "following",
       select: "fullName username profilePicture",
@@ -492,12 +549,26 @@ const getUserFollowing = asyncHandler(
       return;
     }
 
+    let following = user.following || [];
+    if (currentUserId) {
+      const currentUser = await User.findById(currentUserId);
+      if (currentUser) {
+        const blockedIds = new Set([
+          ...(currentUser.blockUsers || []).map((id) => id.toString()),
+          ...(currentUser.blockedByUsers || []).map((id) => id.toString()),
+        ]);
+        following = following.filter(
+          (u: any) => !blockedIds.has(u._id.toString()),
+        );
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
       data: {
-        followingCount: user.following?.length || 0,
-        following: user.following || [],
+        followingCount: following.length,
+        following,
       },
     });
     return;
@@ -508,6 +579,7 @@ const getUserFollowing = asyncHandler(
 const getUserFollowers = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.params.userId as string;
+    const currentUserId = req.user?.id;
     const user = await User.findById(userId).populate({
       path: "followers",
       select: "fullName username profilePicture",
@@ -520,13 +592,162 @@ const getUserFollowers = asyncHandler(
       });
       return;
     }
+
+    let followers = user.followers || [];
+    if (currentUserId) {
+      const currentUser = await User.findById(currentUserId);
+      if (currentUser) {
+        const blockedIds = new Set([
+          ...(currentUser.blockUsers || []).map((id) => id.toString()),
+          ...(currentUser.blockedByUsers || []).map((id) => id.toString()),
+        ]);
+        followers = followers.filter(
+          (u: any) => !blockedIds.has(u._id.toString()),
+        );
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
       data: {
-        followersCount: user.followers?.length || 0,
-        followers: user.followers || [],
+        followersCount: followers.length,
+        followers,
       },
+    });
+    return;
+  },
+);
+
+// BLOCK USER
+const blockUser = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const targetUserId = req.params.userId;
+    const currentUserId = req.user?.id;
+
+    if (!targetUserId) {
+      sendError(res, 400, "Invalid user");
+      return;
+    }
+
+    if (targetUserId === currentUserId) {
+      sendError(res, 403, "You cannot block yourself");
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    const isAlreadyBlocked = currentUser.blockUsers?.some(
+      (id) => id.toString() === targetUser._id.toString(),
+    );
+    if (isAlreadyBlocked) {
+      sendError(res, 400, "User is already blocked");
+      return;
+    }
+
+    await User.findByIdAndUpdate(currentUserId, {
+      $addToSet: { blockUsers: targetUser._id },
+      $pull: { following: targetUser._id, followers: targetUser._id },
+    });
+
+    await User.findByIdAndUpdate(targetUserId, {
+      $addToSet: { blockedByUsers: currentUserId },
+      $pull: { following: currentUserId, followers: currentUserId },
+    });
+
+    await Notification.deleteMany({
+      $or: [
+        { recipient: targetUserId, sender: currentUserId },
+        { recipient: currentUserId, sender: targetUserId },
+      ],
+    } as any);
+
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: { message: "User blocked successfully" },
+    });
+    return;
+  },
+);
+
+// GET BLOCKED USERS
+const getBlockedUsers = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const currentUserId = req.user?.id;
+
+    const currentUser = await User.findById(currentUserId).populate(
+      "blockUsers",
+      "_id fullName username jobTitle profilePicture",
+    );
+
+    if (!currentUser) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Blocked users fetched successfully",
+      data: { blockedUsers: currentUser.blockUsers || [] },
+    });
+    return;
+  },
+);
+
+// UNBLOCK USER
+const unblockUser = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const targetUserId = req.params.userId;
+    const currentUserId = req.user?.id;
+
+    if (!targetUserId) {
+      sendError(res, 400, "Invalid user");
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      sendError(res, 404, "User not found");
+      return;
+    }
+
+    const isBlocked = currentUser.blockUsers?.some(
+      (id) => id.toString() === targetUser._id.toString(),
+    );
+    if (!isBlocked) {
+      sendError(res, 400, "User is not blocked");
+      return;
+    }
+
+    await User.findByIdAndUpdate(currentUserId, {
+      $pull: { blockUsers: targetUser._id },
+    });
+
+    await User.findByIdAndUpdate(targetUserId, {
+      $pull: { blockedByUsers: currentUserId },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Request processed successfully",
+      data: { message: "User unblocked successfully" },
     });
     return;
   },
@@ -543,4 +764,8 @@ export {
   toggleFollowUser,
   getUserFollowers,
   getUserFollowing,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
 };
+

@@ -25,6 +25,8 @@ export interface AuthMe {
   provider?: "local" | "google" | "github";
   followers?: string[];
   following?: string[];
+  blockUsers?: string[];
+  blockedByUsers?: string[];
   createdAt: string;
   updatedAt: string;
 }

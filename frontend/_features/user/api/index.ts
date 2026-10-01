@@ -9,4 +9,7 @@ export * from "./deleteProfileImage";
 export * from "./toggleFollowUser";
 export * from "./getUserFollowers";
 export * from "./getUserFollowing";
+export * from "./blockUser";
+export * from "./unblockUser";
+export * from "./getBlockedUsers";
 
