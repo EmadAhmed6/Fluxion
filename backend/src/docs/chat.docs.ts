@@ -275,7 +275,7 @@
  * /chat/{messageId}/pin:
  *   patch:
  *     summary: Toggle a message pin
- *     description: Toggle the conversation-wide pinned state. Either participant may pin or unpin the message; both participants see the resulting isPinned value. No request body is required.
+ *     description: Toggle the shared pin state. No request body required.
  *     tags:
  *       - Chat
  *     security:
@@ -318,7 +318,7 @@
  * /chat/{messageId}/star:
  *   patch:
  *     summary: Toggle a message star
- *     description: Toggle the conversation-wide starred state. Either participant may star or unstar the message; both participants see the resulting isStarred value. No request body is required.
+ *     description: Toggle the shared star state. No request body required.
  *     tags:
  *       - Chat
  *     security:
@@ -402,7 +402,7 @@
  * /chat/{userId}/pinned:
  *   get:
  *     summary: Get pinned messages in a conversation
- *     description: Retrieve messages pinned in the conversation by either participant, newest first. Pin state is shared by both participants.
+ *     description: List messages pinned in this conversation, newest first.
  *     tags:
  *       - Chat
  *     security:
@@ -446,7 +446,7 @@
  * /chat/{userId}/starred:
  *   get:
  *     summary: Get starred messages in a conversation
- *     description: Retrieve messages starred in the conversation by either participant, newest first. Star state is shared by both participants.
+ *     description: List messages starred in this conversation, newest first.
  *     tags:
  *       - Chat
  *     security:
@@ -750,11 +750,11 @@
  *           example: false
  *         isPinned:
  *           type: boolean
- *           description: Whether this message is pinned in the conversation. The state is shared by both participants.
+ *           description: Shared pin state.
  *           example: false
  *         isStarred:
  *           type: boolean
- *           description: Whether this message is starred in the conversation. The state is shared by both participants.
+ *           description: Shared star state.
  *           example: false
  *         createdAt:
  *           type: string

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -165,6 +165,28 @@ function MessageActionsMenu({
   onDelete,
 }: MessageActionsMenuProps) {
   const { t, isArabic } = useLanguage();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [opensUpward, setOpensUpward] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    const feed = menu?.closest<HTMLElement>("[data-message-feed]");
+    if (!trigger || !menu || !feed) return;
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const feedRect = feed.getBoundingClientRect();
+    const availableAbove = triggerRect.top - feedRect.top;
+    const availableBelow = feedRect.bottom - triggerRect.bottom;
+
+    setOpensUpward(
+      availableBelow < menu.offsetHeight && availableAbove > availableBelow,
+    );
+  }, [hasText, isMe, isOpen, isPinned, isStarred]);
+
   const runAction = (action: () => void) => {
     onClose();
     action();
@@ -173,6 +195,7 @@ function MessageActionsMenu({
   return (
     <div className="relative shrink-0 mb-1" data-message-actions-menu>
       <button
+        ref={triggerRef}
         type="button"
         onClick={onToggle}
         aria-label={isArabic ? "إجراءات الرسالة" : "Message actions"}
@@ -184,8 +207,9 @@ function MessageActionsMenu({
       </button>
       {isOpen && (
         <div
+          ref={menuRef}
           role="menu"
-          className={`absolute top-full z-[70] mt-1 min-w-44 rounded-xl border border-borderPrimary bg-bgPrimary p-1.5 shadow-xl ${isMe ? "ltr:right-0 rtl:left-0" : "ltr:left-0 rtl:right-0"}`}
+          className={`absolute ${opensUpward ? "bottom-full mb-1" : "top-full mt-1"} z-[70] min-w-44 rounded-xl border border-borderPrimary bg-bgPrimary p-1.5 shadow-xl ${isMe ? "ltr:right-0 rtl:left-0" : "ltr:left-0 rtl:right-0"}`}
         >
           <button role="menuitem" type="button" onClick={() => runAction(onReply)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary">
             <Reply className="h-3.5 w-3.5" />{t.chat.reply}
@@ -1119,7 +1143,7 @@ function ChatContent() {
                 )}
 
                 {/* Messages Feed */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div data-message-feed className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                   {isDisplayedMessagesLoading ? (
                     <div className="py-20 text-center text-xs text-textSecondary">
                       <Loader2 className="h-7 w-7 animate-spin text-primary mx-auto mb-2" />
