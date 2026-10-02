@@ -2873,57 +2873,59 @@ Responses:
 
 ### GET /chat/:userId/pinned 🔒
 
-| Item | Details |
-| :--- | :--- |
-| Purpose | List pinned messages in the conversation, newest first. Pin state is shared by both participants. |
+Retrieve pinned messages in the conversation, newest first. Pin state is shared by both participants.
 
-Path parameters:
+**Path Parameters**
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | userId | string | Yes | Conversation partner's MongoDB ObjectId. |
 
-Response 200:
+**Responses**
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| success | boolean | `true` when the request succeeds. |
-| data.message | string | `Pinned messages of the user`. |
-| data.data | ChatMessage[] | Pinned messages, newest first. |
+**Response 200**
 
-Error responses:
+Pinned messages retrieved successfully.
 
-| Status | Description |
-| :---: | :--- |
-| 400 | `userId` is missing. |
-| 401 | The access token is missing or invalid. |
+    {
+      "success": true,
+      "message": "Request Succeed",
+      "data": {
+        "message": "Pinned messages of the user",
+        "data": []
+      }
+    }
+
+- **400:** `userId` is missing.
+- **401:** The access token is missing or invalid.
 
 ### GET /chat/:userId/starred 🔒
 
-| Item | Details |
-| :--- | :--- |
-| Purpose | List starred messages in the conversation, newest first. Star state is shared by both participants. |
+Retrieve starred messages in the conversation, newest first. Star state is shared by both participants.
 
-Path parameters:
+**Path Parameters**
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | userId | string | Yes | Conversation partner's MongoDB ObjectId. |
 
-Response 200:
+**Responses**
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| success | boolean | `true` when the request succeeds. |
-| data.message | string | `Starred messages of the user`. |
-| data.data | ChatMessage[] | Starred messages, newest first. |
+**Response 200**
 
-Error responses:
+Starred messages retrieved successfully.
 
-| Status | Description |
-| :---: | :--- |
-| 400 | `userId` is missing. |
-| 401 | The access token is missing or invalid. |
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "message": "Starred messages of the user",
+        "data": []
+      }
+    }
+
+- **400:** `userId` is missing.
+- **401:** The access token is missing or invalid.
 
 ### PATCH /chat/:messageId/react 🔒
 
@@ -2949,63 +2951,63 @@ Responses:
 
 ### PATCH /chat/:messageId/pin 🔒
 
-| Item | Details |
-| :--- | :--- |
-| Purpose | Toggle the shared pin state. Either participant can pin or unpin the message. |
-| Request body | None. |
+Toggle the shared pin state. Either participant can pin or unpin the message. No request body is required.
 
-Path parameters:
+**Path Parameters**
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | messageId | string | Yes | MongoDB ObjectId of the message. |
 
-Response 200:
+**Responses**
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| success | boolean | `true` when the request succeeds. |
-| message | string | `Request succeed`. |
-| data | ChatMessage | Updated message, including the new `isPinned` value. |
+**Response 200**
 
-Error responses:
+Pin state toggled successfully.
 
-| Status | Description |
-| :---: | :--- |
-| 400 | `messageId` is missing. |
-| 401 | The access token is missing or invalid. |
-| 403 | The authenticated user is not part of the conversation. |
-| 404 | The message was not found. |
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "isPinned": true
+      }
+    }
+
+- **400:** `messageId` is missing.
+- **401:** The access token is missing or invalid.
+- **403:** The authenticated user is not part of the conversation.
+- **404:** The message was not found.
 
 ### PATCH /chat/:messageId/star 🔒
 
-| Item | Details |
-| :--- | :--- |
-| Purpose | Toggle the shared star state. Either participant can star or unstar the message. |
-| Request body | None. |
+Toggle the shared star state. Either participant can star or unstar the message. No request body is required.
 
-Path parameters:
+**Path Parameters**
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | messageId | string | Yes | MongoDB ObjectId of the message. |
 
-Response 200:
+**Responses**
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| success | boolean | `true` when the request succeeds. |
-| message | string | `Request succeed`. |
-| data | ChatMessage | Updated message, including the new `isStarred` value. |
+**Response 200**
 
-Error responses:
+Star state toggled successfully.
 
-| Status | Description |
-| :---: | :--- |
-| 400 | `messageId` is missing. |
-| 401 | The access token is missing or invalid. |
-| 403 | The authenticated user is not part of the conversation. |
-| 404 | The message was not found. |
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "isStarred": true
+      }
+    }
+
+- **400:** `messageId` is missing.
+- **401:** The access token is missing or invalid.
+- **403:** The authenticated user is not part of the conversation.
+- **404:** The message was not found.
 
 ### PATCH /chat/:messageId 🔒
 
