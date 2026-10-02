@@ -26,6 +26,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { formatRelativeTime } from "@/lib/utils";
 import Tooltip from "@/_components/Tooltip";
 import { Text } from "@/_components/Text";
+import { useGetAuthMeQuery } from "@/_features/auth/hooks";
+import { useToggleFollowUser } from "@/_features/user/hooks/useToggleFollowUser";
 
 interface NotificationDropdownProps {
   isMobileDrawer?: boolean;
@@ -38,13 +40,24 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [followedBackIds, setFollowedBackIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { t, isArabic } = useLanguage();
 
   const { notifications, unreadCount, isLoading } = useGetNotifications();
+  const { data: currentUser } = useGetAuthMeQuery();
   const markAllMutation = useMarkAllNotificationsAsRead();
   const readNotificationMutation = useReadNotification();
+  const followMutation = useToggleFollowUser();
+
+  const currentFollowingIds = new Set(
+    (currentUser?.following || []).map((user) =>
+      typeof user === "string" ? user : (user as unknown as { _id: string })._id,
+    ),
+  );
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -344,27 +357,71 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-textPrimary leading-relaxed">
-                        <span className="font-bold text-primary hover:underline">
-                          {senderName}
-                        </span>{" "}
-                        <span className="text-textSecondary">
-                          {getActionText(notif.type)}
-                        </span>
-                      </p>
-
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-textSecondary/80">
-                          {formattedTime}
-                        </span>
-                        {!notif.isRead && (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.2 rounded-full">
-                            <Circle className="h-1.5 w-1.5 fill-primary text-primary" />
-                            {t.nav.unreadNotifications}
+                    <div className="flex flex-1 min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs text-textPrimary leading-relaxed">
+                          <span className="font-bold text-primary hover:underline">
+                            {senderName}
+                          </span>{" "}
+                          <span className="text-textSecondary">
+                            {getActionText(notif.type)}
                           </span>
-                        )}
+                        </p>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-textSecondary/80">
+                            {formattedTime}
+                          </span>
+                          {!notif.isRead && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.2 rounded-full">
+                              <Circle className="h-1.5 w-1.5 fill-primary text-primary" />
+                              {t.nav.unreadNotifications}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      {notif.type === "follow" && notif.sender?._id && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const senderId = notif.sender._id;
+                            if (
+                              currentFollowingIds.has(senderId) ||
+                              followedBackIds.has(senderId)
+                            ) {
+                              setIsOpen(false);
+                              onCloseMobileDrawer?.();
+                              router.push(`/chat?userId=${senderId}`);
+                              return;
+                            }
+                            followMutation.mutate(senderId, {
+                              onSuccess: () =>
+                                setFollowedBackIds((current) =>
+                                  new Set(current).add(senderId),
+                                ),
+                            });
+                          }}
+                          disabled={
+                            !currentFollowingIds.has(notif.sender._id) &&
+                            !followedBackIds.has(notif.sender._id) &&
+                            followMutation.isPending &&
+                            followMutation.variables === notif.sender._id
+                          }
+                          className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-white transition-colors disabled:cursor-wait disabled:opacity-60 ${currentFollowingIds.has(notif.sender._id) || followedBackIds.has(notif.sender._id) ? "bg-bgPrimary text-textPrimary hover:bg-bgPrimary/80" : "bg-primary hover:bg-primaryHover"}`}
+                        >
+                          {currentFollowingIds.has(notif.sender._id) ||
+                          followedBackIds.has(notif.sender._id) ? (
+                            <MessageSquare className="h-3 w-3" />
+                          ) : (
+                            <UserPlus className="h-3 w-3" />
+                          )}
+                          {currentFollowingIds.has(notif.sender._id) ||
+                          followedBackIds.has(notif.sender._id)
+                            ? t.nav.message
+                            : t.nav.followBack}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

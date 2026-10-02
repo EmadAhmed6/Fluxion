@@ -32,6 +32,8 @@ export interface NavTranslations {
   viewPost: string;
   viewProfile: string;
   messages: string;
+  followBack: string;
+  message: string;
 }
 
 export const navTranslations: Record<Language, NavTranslations> = {
@@ -67,6 +69,8 @@ export const navTranslations: Record<Language, NavTranslations> = {
     viewPost: "View Post",
     viewProfile: "View Profile",
     messages: "Messages",
+    followBack: "Follow back",
+    message: "Message",
   },
   ar: {
     searchPlaceholder: "ابحث عن مستخدم بالاسم أو اليوزر نيم...",
@@ -100,8 +104,8 @@ export const navTranslations: Record<Language, NavTranslations> = {
     viewPost: "عرض البوست",
     viewProfile: "عرض البروفايل",
     messages: "الرسائل",
+    followBack: "متابعة بالمثل",
+    message: "مراسلة",
   },
 };
-
-
 

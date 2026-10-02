@@ -7,6 +7,7 @@ import PostCard from "@/_components/PostCard";
 import PostCardSkeleton from "@/_components/PostCardSkeleton";
 import UserProfileSidebar from "@/_components/UserProfileSidebar";
 import CreatePostCard from "@/_components/CreatePostCard";
+import StoriesTray from "@/_components/StoriesTray";
 import { useGetPosts } from "@/_features/posts/hooks";
 import { getAllPosts } from "@/_features/posts/api/getAllPosts";
 import { Post } from "@/_features/posts/types/Post";
@@ -183,6 +184,8 @@ export default function HomeContent() {
 
           {/* Centered Single Column Vertical Posts Feed */}
           <div className="lg:col-span-3 order-1 lg:order-2 max-w-2xl mx-auto w-full space-y-6">
+            <StoriesTray />
+
             {/* Inline Post Creation Box right at top of feed */}
             {token && <CreatePostCard />}
 

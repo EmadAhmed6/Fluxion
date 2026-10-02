@@ -1,3 +1,5 @@
+import type { Story } from "@/_features/stories/types/story.types";
+
 export interface UserProfile {
   _id: string;
   fullName?: string;
@@ -17,6 +19,8 @@ export interface UserProfile {
   following?: string[] | any[];
   createdAt?: string;
   updatedAt?: string;
+  stories?: Story[];
+  hasActivityStory?: boolean;
 }
 
 export interface PostImage {

@@ -28,6 +28,7 @@ import { useGetUserProfile } from "@/_features/user/hooks";
 import { Text } from "@/_components/Text";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
+import StoriesTray from "@/_components/StoriesTray";
 import ImageModal from "@/_components/ImageModal";
 import DeleteConfirmModal from "@/_components/DeleteConfirmModal";
 import Tooltip from "@/_components/Tooltip";
@@ -876,11 +877,20 @@ function ChatContent() {
                     : "";
 
                   return (
-                    <button
+                    <div
                       key={target?._id}
                       onClick={() => {
                         setActiveUser(target);
                         router.push(`/chat?userId=${target._id}`);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setActiveUser(target);
+                          router.push(`/chat?userId=${target._id}`);
+                        }
                       }}
                       className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-start cursor-pointer group ${
                         isSelected
@@ -889,20 +899,7 @@ function ChatContent() {
                       }`}
                     >
                       {/* Avatar */}
-                      <div className="relative shrink-0">
-                        {target?.profilePicture?.url ? (
-                          <img
-                            src={target.profilePicture.url}
-                            alt={displayName}
-                            referrerPolicy="no-referrer"
-                            className="h-11 w-11 rounded-full object-cover ring-2 ring-primary/20"
-                          />
-                        ) : (
-                          <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                            <UserIcon className="h-5 w-5" />
-                          </div>
-                        )}
-                      </div>
+                      <StoriesTray mode="profile" avatarOnly profileUser={target} />
 
                       {/* Info & Last Message */}
                       <div className="flex-1 min-w-0">
@@ -962,7 +959,7 @@ function ChatContent() {
                           )}
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })
               )}
@@ -992,22 +989,8 @@ function ChatContent() {
                       <BackIcon className="h-5 w-5" />
                     </button>
 
-                    <Link
-                      href={`/profile/${activeUser._id}`}
-                      className="relative shrink-0 group"
-                    >
-                      {activeUser.profilePicture?.url ? (
-                        <img
-                          src={activeUser.profilePicture.url}
-                          alt={activeUser.fullName || activeUser.username}
-                          referrerPolicy="no-referrer"
-                          className="h-10 w-10 sm:h-11 sm:w-11 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary transition-all"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                          <UserIcon className="h-5 w-5" />
-                        </div>
-                      )}
+                    <Link href={`/profile/${activeUser._id}`} className="shrink-0">
+                      <StoriesTray mode="profile" avatarOnly profileUser={activeUser} />
                     </Link>
 
 

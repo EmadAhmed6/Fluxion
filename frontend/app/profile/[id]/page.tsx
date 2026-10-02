@@ -8,6 +8,7 @@ import Cookies from "js-cookie";
 import Navbar from "@/_components/Navbar";
 
 import PostCard from "@/_components/PostCard";
+import StoriesTray from "@/_components/StoriesTray";
 import CreatePostCard from "@/_components/CreatePostCard";
 import EditProfileModal from "@/_components/EditProfileModal";
 import {
@@ -351,41 +352,29 @@ export default function UserProfilePage() {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 relative z-10">
               {/* Avatar Section */}
               <div className="relative shrink-0 group">
-                <div
-                  onClick={() => {
-                    if (userToDisplay?.profilePicture?.url) {
-                      setPreviewImage(userToDisplay.profilePicture.url);
-                    }
-                  }}
-                  className={`relative ${userToDisplay?.profilePicture?.url ? "cursor-pointer" : ""}`}
-                  title={
-                    userToDisplay?.profilePicture?.url
-                      ? isArabic
-                        ? "اضغط لتكبير الصورة"
-                        : "Click to view photo"
-                      : undefined
-                  }
-                >
-                  {userToDisplay?.profilePicture?.url ? (
-                    <div className="relative rounded-full overflow-hidden">
-                      <img
-                        src={userToDisplay.profilePicture.url}
-                        alt={userToDisplay.fullName || userToDisplay.username}
-                        className="h-28 w-28 md:h-32 md:w-32 rounded-full object-cover border-2 border-primary/30 shadow-md group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white pointer-events-none z-10">
-                        <Eye className="h-6 w-6 text-white mb-0.5" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">
-                          {isArabic ? "عرض الصورة" : "View Image"}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-28 w-28 md:h-32 md:w-32 rounded-full bg-primary/15 flex items-center justify-center text-primary border-2 border-primary/30 shadow-md">
-                      <UserIcon className="h-14 w-14" />
-                    </div>
-                  )}
-                </div>
+                {userToDisplay && (
+                  <div
+                    onClick={() => {
+                      if (userToDisplay.profilePicture?.url) {
+                        setPreviewImage(userToDisplay.profilePicture.url);
+                      }
+                    }}
+                    className={userToDisplay.profilePicture?.url ? "cursor-pointer" : ""}
+                    title={isArabic ? "اضغط لعرض القصة أو تكبير الصورة" : "Click to view story or enlarge photo"}
+                  >
+                    <StoriesTray
+                      mode="profile"
+                      avatarOnly
+                      avatarSize="profile"
+                      profileUser={{
+                        _id: String(targetUserId),
+                        username: userToDisplay.username,
+                        fullName: userToDisplay.fullName,
+                        profilePicture: userToDisplay.profilePicture,
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Avatar Action Buttons (Owner or Admin — but not admin on SuperAdmin profile) */}
                 {(isOwnProfile ||

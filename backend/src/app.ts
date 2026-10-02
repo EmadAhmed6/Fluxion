@@ -5,6 +5,7 @@ import { notFound, errorHandler } from "./middlewares/errors.js";
 import auth from "./modules/auth/auth.routes.js";
 import users from "./modules/user/user.routes.js";
 import posts from "./modules/posts/post.routes.js";
+import stories from "./modules/stories/story.routes.js";
 import notifications from "./modules/notifications/notifications.routes.js";
 import helmet from "helmet";
 import cors from "cors";
@@ -46,6 +47,7 @@ app.use("/users", apiLimiter, users);
 app.use("/posts", apiLimiter, posts);
 app.use("/notifications", notifications);
 app.use("/chat", chat);
+app.use("/stories", stories);
 
 app.use("/api-docs", swaggerui.serve, swaggerui.setup(spacs));
 

@@ -109,6 +109,15 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 56  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
 | 57  | GET    | `/chat/:userId/pinned`                                            | Retrieve pinned messages in a conversation                        |  🔒  |        —         |
 | 58  | GET    | `/chat/:userId/starred`                                           | Retrieve starred messages in a conversation                       |  🔒  |        —         |
+| 59  | GET    | `/stories`                                                        | Retrieve active stories                                           |  🔒  |        —         |
+| 60  | GET    | `/stories/timeline`                                               | Retrieve followed users' and own stories grouped by author        |  🔒  |        —         |
+| 61  | GET    | `/stories/user/:userId`                                           | Retrieve active stories for a user                                |  🔒  |        —         |
+| 62  | POST   | `/stories`                                                        | Create a text, image, or video story                              |  🔒  |        —         |
+| 63  | DELETE | `/stories/:storyId`                                               | Delete a story owned by the authenticated user                   |  🔒  |        —         |
+| 64  | PUT    | `/stories/:storyId/view`                                          | Mark a story as viewed                                            |  🔒  |        —         |
+| 65  | GET    | `/stories/:storyId/viewers`                                       | Retrieve viewers of an owned story                               |  🔒  |        —         |
+| 66  | POST   | `/stories/:storyId/reply`                                         | Reply to a story                                                  |  🔒  |        —         |
+| 67  | PATCH  | `/stories/:storyId/react`                                         | Add, change, or remove a story reaction                           |  🔒  |        —         |
 
 ---
 
@@ -120,6 +129,7 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
   - [Block Feature](#block-feature)
 - [Post Management Endpoints](#post-management-endpoints)
 - [Comment Management Endpoints](#comment-management-endpoints)
+- [Story Management Endpoints](#story-management-endpoints)
 - [Notification Management Endpoints](#notification-management-endpoints)
 - [Chat Management Endpoints](#chat-management-endpoints)
 - [Common HTTP Status Codes](#common-http-status-codes)
@@ -2532,6 +2542,604 @@ Comment or reply comment was not found.
 
 ---
 
+## Story Management Endpoints
+
+Stories are available for 24 hours after creation. All story endpoints require authentication.
+
+### GET /stories 🔒
+
+Retrieve all stories created within the last 24 hours, newest first. Story authors and reaction users are returned with basic profile details.
+
+#### Responses
+
+##### Response 200
+
+Stories retrieved successfully.
+
+```json
+{
+  "success": true,
+  "message": "Stories fetched successfully",
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012345",
+      "author": {
+        "_id": "65f1a2b3c4d5e6f789012346",
+        "username": "ahmed",
+        "fullName": "Ahmed Mohamed",
+        "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+      },
+      "title": "A beautiful day",
+      "imageUrl": "https://res.cloudinary.com/example/image/upload/story.jpg",
+      "fileUrl": "",
+      "fileName": "",
+      "views": [],
+      "authorViewed": false,
+      "reactions": [],
+      "createdAt": "2026-10-03T12:00:00.000Z",
+      "updatedAt": "2026-10-03T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+##### Response 401
+
+Authentication is required.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+### GET /stories/timeline 🔒
+
+Retrieve stories from the authenticated user and users they follow, grouped by author. Stories in each group are ordered oldest first.
+
+#### Responses
+
+##### Response 200
+
+Timeline stories retrieved successfully.
+
+```json
+{
+  "success": true,
+  "message": "Timeline stories fetched successfully",
+  "data": [
+    {
+      "author": {
+        "_id": "65f1a2b3c4d5e6f789012346",
+        "username": "ahmed",
+        "fullName": "Ahmed Mohamed",
+        "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+      },
+      "stories": [
+        {
+          "_id": "65f1a2b3c4d5e6f789012345",
+          "author": {
+            "_id": "65f1a2b3c4d5e6f789012346",
+            "username": "ahmed",
+            "fullName": "Ahmed Mohamed",
+            "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+          },
+          "title": "A beautiful day",
+          "imageUrl": "https://res.cloudinary.com/example/image/upload/story.jpg",
+          "fileUrl": "",
+          "fileName": "",
+          "views": [],
+          "authorViewed": false,
+          "reactions": [],
+          "createdAt": "2026-10-03T12:00:00.000Z",
+          "updatedAt": "2026-10-03T12:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+##### Response 401
+
+Authentication is required.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+The authenticated user was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "User was not found" }
+}
+```
+
+### GET /stories/user/:userId 🔒
+
+Retrieve stories created by the specified user within the last 24 hours. Access is denied if either user has blocked the other.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `userId` | string | ✅ | The ID of the user whose stories to retrieve. |
+
+#### Responses
+
+##### Response 200
+
+User stories retrieved successfully. The `data` field contains the same story objects returned by `GET /stories`.
+
+```json
+{
+  "success": true,
+  "message": "User stories fetched successfully",
+  "data": []
+}
+```
+
+##### Response 400
+
+The user ID is invalid.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "User ID is invalid" }
+}
+```
+
+##### Response 403
+
+The requested stories are not accessible because of a block relationship.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "You cannot access this user's stories" }
+}
+```
+
+##### Response 404
+
+The requested user was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "User was not found" }
+}
+```
+
+### POST /stories 🔒
+
+Create a text-only story or upload an image or video with an optional title. At least a title or file is required. Stories expire after 24 hours.
+
+#### Request Body (`multipart/form-data`)
+
+| **Field** | **Type** | **Required** | **Description** |
+| --------- | -------- | ------------ | --------------- |
+| `title` | string | ⚠️ | Story text (maximum 250 characters). Required if no file is uploaded; defaults to `Story` when a file is uploaded without a title. |
+| `file` | file | ⚠️ | Optional image or video file (maximum 100 MiB). Other file types are rejected. |
+
+At least one of `title` or `file` is required.
+
+#### Responses
+
+##### Response 201
+
+Story created successfully.
+
+```json
+{
+  "success": true,
+  "message": "Story created successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "author": {
+      "_id": "65f1a2b3c4d5e6f789012346",
+      "username": "ahmed",
+      "fullName": "Ahmed Mohamed",
+      "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+    },
+    "title": "A beautiful day",
+    "imageUrl": "",
+    "fileUrl": "",
+    "fileName": "",
+    "views": [],
+    "authorViewed": false,
+    "reactions": [],
+    "createdAt": "2026-10-03T12:00:00.000Z",
+    "updatedAt": "2026-10-03T12:00:00.000Z"
+  }
+}
+```
+
+##### Response 400
+
+Neither a title nor a file was provided, or the uploaded file is not an image or video.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "A story title or image/video is required" }
+}
+```
+
+### DELETE /stories/:storyId 🔒
+
+Delete a story owned by the authenticated user.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `storyId` | string | ✅ | The ID of the story to delete. |
+
+#### Responses
+
+##### Response 200
+
+Story deleted successfully.
+
+```json
+{
+  "success": true,
+  "message": "Story deleted successfully",
+  "data": null
+}
+```
+
+##### Response 403
+
+Only the story owner can delete the story.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "You are not authorized to delete this story" }
+}
+```
+
+##### Response 400
+
+The story ID is invalid or missing.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story ID is required" }
+}
+```
+
+##### Response 404
+
+The story was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story was not found" }
+}
+```
+
+### PUT /stories/:storyId/view 🔒
+
+Record the authenticated user as a viewer. When the story owner views their own story, `authorViewed` is set to `true` instead of adding them to `views`.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `storyId` | string | ✅ | The ID of the story to mark as viewed. |
+
+#### Responses
+
+##### Response 200
+
+Story viewed successfully. Returns the updated story.
+
+```json
+{
+  "success": true,
+  "message": "Story viewed successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "author": {
+      "_id": "65f1a2b3c4d5e6f789012346",
+      "username": "ahmed",
+      "fullName": "Ahmed Mohamed",
+      "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+    },
+    "title": "A beautiful day",
+    "imageUrl": "https://res.cloudinary.com/example/image/upload/story.jpg",
+    "fileUrl": "",
+    "fileName": "",
+    "views": ["65f1a2b3c4d5e6f789012347"],
+    "authorViewed": false,
+    "reactions": [],
+    "createdAt": "2026-10-03T12:00:00.000Z",
+    "updatedAt": "2026-10-03T12:00:00.000Z"
+  }
+}
+```
+
+##### Response 400
+
+The story ID is invalid or missing.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story ID is required" }
+}
+```
+
+##### Response 404
+
+The story was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story was not found" }
+}
+```
+
+### GET /stories/:storyId/viewers 🔒
+
+Retrieve the users who viewed a story. Only the story owner can access the viewer list; the owner is excluded from the results.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `storyId` | string | ✅ | The ID of the story whose viewers to retrieve. |
+
+#### Responses
+
+##### Response 200
+
+Viewers fetched successfully.
+
+```json
+{
+  "success": true,
+  "message": "Viewers fetched successfully",
+  "data": [
+    {
+      "_id": "65f1a2b3c4d5e6f789012347",
+      "username": "sara",
+      "fullName": "Sara Ali",
+      "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/sara.jpg", "publicId": "sara_123" }
+    }
+  ]
+}
+```
+
+##### Response 403
+
+Only the story owner can view the viewer list.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "You are not authorized to view this story's viewers" }
+}
+```
+
+##### Response 400
+
+The story ID is invalid or missing.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story ID is required" }
+}
+```
+
+##### Response 404
+
+The story was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story was not found" }
+}
+```
+
+### POST /stories/:storyId/reply 🔒
+
+Add a text reply from the authenticated user to a story.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `storyId` | string | ✅ | The ID of the story to reply to. |
+
+#### Request Body (`application/json`)
+
+| **Field** | **Type** | **Required** | **Description** |
+| --------- | -------- | ------------ | --------------- |
+| `message` | string | ✅ | Text of the reply. |
+
+#### Responses
+
+##### Response 200
+
+Story replied successfully. The returned story includes the new reply in `replies`.
+
+```json
+{
+  "success": true,
+  "message": "Story replied successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "author": {
+      "_id": "65f1a2b3c4d5e6f789012346",
+      "username": "ahmed",
+      "fullName": "Ahmed Mohamed",
+      "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+    },
+    "title": "A beautiful day",
+    "imageUrl": "https://res.cloudinary.com/example/image/upload/story.jpg",
+    "fileUrl": "",
+    "fileName": "",
+    "views": [],
+    "replies": [
+      {
+        "user": "65f1a2b3c4d5e6f789012347",
+        "message": "This looks amazing!"
+      }
+    ],
+    "authorViewed": false,
+    "reactions": [],
+    "createdAt": "2026-10-03T12:00:00.000Z",
+    "updatedAt": "2026-10-03T12:00:00.000Z"
+  }
+}
+```
+
+##### Response 400
+
+The story ID or reply message is invalid or missing.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story ID and message are required" }
+}
+```
+
+##### Response 401
+
+Authentication is required.
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+##### Response 404
+
+The story was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story was not found" }
+}
+```
+
+### PATCH /stories/:storyId/react 🔒
+
+Add or change the authenticated user's reaction. Sending the same reaction type again removes it.
+
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| ------------- | -------- | ------------ | --------------- |
+| `storyId` | string | ✅ | The ID of the story to react to. |
+
+#### Request Body (`application/json`)
+
+| **Field** | **Type** | **Required** | **Description** |
+| --------- | -------- | ------------ | --------------- |
+| `type` | string | ✅ | Reaction value, such as `❤️`. Sending the same value again removes the reaction. |
+
+#### Responses
+
+##### Response 200
+
+Story reaction updated successfully. Returns the updated story.
+
+```json
+{
+  "success": true,
+  "message": "Story reaction updated successfully",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f789012345",
+    "author": {
+      "_id": "65f1a2b3c4d5e6f789012346",
+      "username": "ahmed",
+      "fullName": "Ahmed Mohamed",
+      "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/avatar.jpg", "publicId": "avatar_123" }
+    },
+    "title": "A beautiful day",
+    "imageUrl": "https://res.cloudinary.com/example/image/upload/story.jpg",
+    "fileUrl": "",
+    "fileName": "",
+    "views": [],
+    "authorViewed": false,
+    "reactions": [
+      {
+        "user": {
+          "_id": "65f1a2b3c4d5e6f789012347",
+          "username": "sara",
+          "fullName": "Sara Ali",
+          "profilePicture": { "url": "https://res.cloudinary.com/example/image/upload/sara.jpg", "publicId": "sara_123" }
+        },
+        "type": "❤️"
+      }
+    ],
+    "createdAt": "2026-10-03T12:00:00.000Z",
+    "updatedAt": "2026-10-03T12:00:00.000Z"
+  }
+}
+```
+
+##### Response 400
+
+The story ID or reaction type is invalid or missing.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story ID and reaction type are required" }
+}
+```
+
+##### Response 404
+
+The story was not found.
+
+```json
+{
+  "success": false,
+  "message": "Request failed",
+  "data": { "message": "Story was not found" }
+}
+```
+
+---
+
 ## Notification Management Endpoints
 
 ### GET /notifications 🔒
@@ -2651,9 +3259,9 @@ Notification was not found.
 
 ## Chat Management Endpoints
 
-All chat endpoints require a valid access token in the Authorization header. Chat routes do not use the users/posts API rate limiter. Multipart uploads are limited to 100 MiB.
+All chat endpoints require a valid access token in the Authorization header. Multipart uploads are limited to 100 MiB.
 
-Chat error responses created with sendError use this envelope:
+Chat errors use this response format:
 
     {
       "success": false,
@@ -2663,167 +3271,234 @@ Chat error responses created with sendError use this envelope:
 
 ### GET /chat/conversations 🔒
 
-Return one conversation entry per chat partner. Conversations are ordered by the most recent non-deleted message and include the interlocutor, last message, and unread incoming-message count.
+Get conversations ordered by the latest message. Each entry includes the chat partner, last message, and unread count.
 
-Response 200:
+#### Responses
+
+##### Response 200
+
+Conversations retrieved successfully.
 
     {
       "success": true,
-      "data": [
-        {
-          "user": {
-            "_id": "65f1a2b3c4d5e6f789012341",
-            "username": "ahmed",
-            "fullName": "Ahmed Mohamed",
-            "profilePicture": { "url": "https://example.com/avatar.jpg" },
-            "role": "user"
-          },
-          "lastMessage": {
-            "_id": "65f1a2b3c4d5e6f789012399",
-            "sender": {
-              "_id": "65f1a2b3c4d5e6f789012340",
-              "username": "emad",
-              "fullName": "Emad Ahmed"
-            },
-            "recipient": {
-              "_id": "65f1a2b3c4d5e6f789012341",
-              "username": "ahmed",
-              "fullName": "Ahmed Mohamed"
-            },
-            "message": "",
-            "imageUrl": "",
-            "fileUrl": "",
-            "fileName": "",
-            "audioUrl": "https://example.com/voice.webm",
-            "isDeleted": false,
-            "isRead": false,
-            "createdAt": "2026-09-29T14:30:00.000Z",
-            "updatedAt": "2026-09-29T14:30:00.000Z"
-          },
-          "unreadCount": 1
-        }
-      ]
+      "data": []
     }
 
-Response 401: The access token is missing or invalid.
+##### Response 401
+
+The access token is missing or invalid.
 
 ### POST /chat/:recipientId/send 🔒
 
-Send a text message, a file with optional text, or both. Supports JSON for text-only messages and multipart/form-data when attaching a file. The uploaded field name is file. Images are stored in imageUrl; non-image attachments are stored in fileUrl and fileName.
+Send a text message, attachment, or both. Use JSON for text-only messages or multipart/form-data for attachments. Images populate imageUrl; other files populate fileUrl and fileName.
 
-Path parameter:
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| recipientId | string | Yes | MongoDB ObjectId of the recipient. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| recipientId | string | ✅ | MongoDB ObjectId of the recipient. |
 
-Request fields:
+#### Request Body
 
-| Field | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
+Content-Type: application/json or multipart/form-data. Multipart file field: file.
+
+| **Field** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
 | message | string | No* | Message text. Required when no file is supplied. |
-| file | file | No* | Optional image or other file, up to 100 MiB. Required when message is empty. |
+| file | file | No* | Image or other file, up to 100 MiB. Required when message is empty. |
 
-Response 201:
+#### Responses
+
+##### Response 201
+
+Message sent successfully.
 
     {
       "success": true,
       "message": "Message sent successfully",
       "data": {
         "_id": "65f1a2b3c4d5e6f789012399",
-        "sender": { "_id": "65f1a2b3c4d5e6f789012340", "username": "emad" },
-        "recipient": { "_id": "65f1a2b3c4d5e6f789012341", "username": "ahmed" },
-        "message": "Please review this file",
-        "imageUrl": "",
-        "fileUrl": "https://example.com/report.pdf",
-        "fileName": "report.pdf",
-        "audioUrl": "",
-        "replyTo": null,
-        "isDeleted": false,
-        "isRead": false,
-        "isEdited": false,
-        "isForwarded": false,
+        "message": "Hello",
         "isPinned": false,
-        "isStarred": false,
-        "reactions": [],
-        "createdAt": "2026-09-29T14:30:00.000Z",
-        "updatedAt": "2026-09-29T14:30:00.000Z"
+        "isStarred": false
       }
     }
 
-Response 400: Message or file is required.
+##### Response 400
+
+Message or file is required.
+
+##### Response 401
+
+The access token is missing or invalid.
+
+##### Response 403
+
+The recipient or sender has blocked the other user.
+
+##### Response 500
+
+Message persistence or attachment upload failed.
 
 ### POST /chat/:recipientId/audio 🔒
 
-Upload and send a voice message. The audio file is stored in audioUrl. An optional replyTo field associates the voice message with an existing message.
+Upload and send a voice message. An optional replyTo associates it with an existing message.
 
-Path parameter: recipientId is the recipient user's MongoDB ObjectId.
+#### Path Parameters
 
-Request body (multipart/form-data):
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| recipientId | string | ✅ | MongoDB ObjectId of the recipient. |
 
-| Field | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| audio | file | Yes | Recorded audio file, up to 100 MiB. |
+#### Request Body
+
+Content-Type: multipart/form-data.
+
+| **Field** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| audio | file | ✅ | Recorded audio file, up to 100 MiB. |
 | replyTo | string | No | MongoDB ObjectId of the message being replied to. |
 
-Response 201: Returns the new ChatMessage in data, with sender and recipient populated and replyTo populated when supplied.
+#### Responses
 
-Responses:
-- 404: Audio file is missing or the reply target was not found.
-- 500: Cloud media upload failed.
-- 401: The access token is missing or invalid.
+##### Response 201
+
+Audio message sent successfully.
+
+    {
+      "success": true,
+      "message": "Audio message sent successfully",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "audioUrl": "https://example.com/voice.webm"
+      }
+    }
+
+##### Response 403
+
+The recipient or sender has blocked the other user.
+
+##### Response 404
+
+Audio file is missing or the reply target was not found.
+
+##### Response 500
+
+Cloud media upload failed.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### POST /chat/:recipientId/:messageId/reply 🔒
 
-Reply to an existing message with text, a file, or both. The uploaded field name is file. Images populate imageUrl; other file types populate fileUrl and fileName. The returned replyTo field contains the original message populated with its sender.
+Reply to a message with text, an attachment, or both. Images populate imageUrl; other files populate fileUrl and fileName.
 
-Path parameters:
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| recipientId | string | Yes | MongoDB ObjectId of the recipient. |
-| messageId | string | Yes | MongoDB ObjectId of the message being replied to. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| recipientId | string | ✅ | MongoDB ObjectId of the recipient. |
+| messageId | string | ✅ | MongoDB ObjectId of the message being replied to. |
 
-Request body (multipart/form-data):
+#### Request Body
 
-| Field | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
+Content-Type: multipart/form-data. File field: file.
+
+| **Field** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
 | message | string | No* | Reply text. Required when no file is supplied. |
-| file | file | No* | Optional image or other file, up to 100 MiB. Required when message is empty. |
+| file | file | No* | Image or other file, up to 100 MiB. Required when message is empty. |
 
-Response 201: Returns the created reply as data.
+#### Responses
 
-Responses:
-- 400: Recipient or reply content is missing.
-- 404: The original message was not found.
-- 500: Attachment upload failed.
-- 401: The access token is missing or invalid.
+##### Response 201
+
+Reply created successfully.
+
+    {
+      "success": true,
+      "message": "Reply sent successfully",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "message": "Reply text",
+        "replyTo": "65f1a2b3c4d5e6f789012398"
+      }
+    }
+
+##### Response 400
+
+Recipient or reply content is missing.
+
+##### Response 403
+
+The recipient or sender has blocked the other user.
+
+##### Response 404
+
+The original message was not found.
+
+##### Response 500
+
+Attachment upload failed.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### POST /chat/:recipientId/:messageId/forward 🔒
 
-Forward an existing message to another user. Creates a new message that copies the original message text and media URLs and sets isForwarded to true. No request body is required.
+Forward an existing message to another user. The new message copies the original content and sets isForwarded to true.
 
-Path parameters:
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| recipientId | string | Yes | MongoDB ObjectId of the new recipient. |
-| messageId | string | Yes | MongoDB ObjectId of the message to forward. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| recipientId | string | ✅ | MongoDB ObjectId of the new recipient. |
+| messageId | string | ✅ | MongoDB ObjectId of the message to forward. |
 
-Response 201: Returns the forwarded ChatMessage as data.
+#### Responses
 
-Responses:
-- 400: Recipient or message ID is missing.
-- 404: The original message was not found.
-- 401: The access token is missing or invalid.
+##### Response 201
+
+Forwarded message created successfully.
+
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "isForwarded": true
+      }
+    }
+
+##### Response 403
+
+The recipient or sender has blocked the other user.
+
+##### Response 404
+
+The original message was not found.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### GET /chat/:userId 🔒
 
-Retrieve messages exchanged with the specified user, sorted oldest to newest. Sender, recipient, reaction users, and reply target (including its sender) are populated. Incoming unread messages from the user are marked as read.
+Get the conversation history, ordered oldest first. Incoming unread messages are marked as read.
 
-Path parameter: userId is the conversation partner's MongoDB ObjectId.
+#### Path Parameters
 
-Response 200:
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| userId | string | ✅ | Conversation partner's MongoDB ObjectId. |
+
+#### Responses
+
+##### Response 200
+
+Messages retrieved successfully. Sender, recipient, reactions, and reply target are populated.
 
     {
       "success": true,
@@ -2831,59 +3506,64 @@ Response 200:
       "data": [
         {
           "_id": "65f1a2b3c4d5e6f789012399",
-          "sender": { "_id": "65f1a2b3c4d5e6f789012340", "username": "emad" },
-          "recipient": { "_id": "65f1a2b3c4d5e6f789012341", "username": "ahmed" },
-          "message": "",
-          "imageUrl": "",
-          "fileUrl": "",
-          "fileName": "",
-          "audioUrl": "https://example.com/voice.webm",
-          "replyTo": null,
-          "reactions": [],
-          "isDeleted": false,
-          "isRead": true,
-          "isEdited": false,
-          "isForwarded": false,
+          "message": "Hello",
           "isPinned": false,
           "isStarred": false,
-          "createdAt": "2026-09-29T14:30:00.000Z",
-          "updatedAt": "2026-09-29T14:30:00.000Z"
+          "createdAt": "2026-09-29T14:30:00.000Z"
         }
       ]
     }
 
-Responses:
-- 400: userId is missing or invalid.
-- 401: The access token is missing or invalid.
+##### Response 400
+
+userId is missing or invalid.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### PATCH /chat/:userId/read 🔒
 
-Mark all unread incoming messages from userId as read.
+Mark unread incoming messages from userId as read.
 
-Response 200:
+#### Path Parameters
+
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| userId | string | ✅ | Conversation partner's MongoDB ObjectId. |
+
+#### Responses
+
+##### Response 200
+
+Messages marked as read.
 
     {
       "success": true,
       "message": "Messages marked as read"
     }
 
-Responses:
-- 400: userId is missing or invalid.
-- 401: The access token is missing or invalid.
+##### Response 400
+
+userId is missing or invalid.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### GET /chat/:userId/pinned 🔒
 
-Retrieve pinned messages in the conversation, newest first. Pin state is shared by both participants.
+List pinned messages in the conversation, newest first. Pin state is shared by both participants.
 
-**Path Parameters**
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| userId | string | Yes | Conversation partner's MongoDB ObjectId. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| userId | string | ✅ | Conversation partner's MongoDB ObjectId. |
 
-**Responses**
+#### Responses
 
-**Response 200**
+##### Response 200
 
 Pinned messages retrieved successfully.
 
@@ -2896,22 +3576,27 @@ Pinned messages retrieved successfully.
       }
     }
 
-- **400:** `userId` is missing.
-- **401:** The access token is missing or invalid.
+##### Response 400
+
+userId is missing.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### GET /chat/:userId/starred 🔒
 
-Retrieve starred messages in the conversation, newest first. Star state is shared by both participants.
+List starred messages in the conversation, newest first. Star state is shared by both participants.
 
-**Path Parameters**
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| userId | string | Yes | Conversation partner's MongoDB ObjectId. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| userId | string | ✅ | Conversation partner's MongoDB ObjectId. |
 
-**Responses**
+#### Responses
 
-**Response 200**
+##### Response 200
 
 Starred messages retrieved successfully.
 
@@ -2924,44 +3609,75 @@ Starred messages retrieved successfully.
       }
     }
 
-- **400:** `userId` is missing.
-- **401:** The access token is missing or invalid.
+##### Response 400
+
+userId is missing.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### PATCH /chat/:messageId/react 🔒
 
-Add a reaction from the authenticated user, change their existing reaction, or remove it by sending the same reaction again.
+Add or change a reaction. Sending the same reaction again removes it. Supported values are like, love, care, haha, wow, sad, angry, and eggs.
 
-Path parameter: messageId is the MongoDB ObjectId of the message.
+#### Path Parameters
 
-Request body (application/json):
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| messageId | string | ✅ | MongoDB ObjectId of the message. |
+
+#### Request Body
+
+Content-Type: application/json.
+
+| **Field** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| reactionType | string | ✅ | Reaction identifier, such as love. |
+
+#### Responses
+
+##### Response 200
+
+Reaction updated successfully.
 
     {
-      "reactionType": "love"
+      "success": true,
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "reactions": []
+      }
     }
 
-The chat UI currently uses these reactionType values: like, love, care, haha, wow, sad, angry, eggs. The endpoint stores the supplied reactionType string.
+##### Response 400
 
-Response 200: Returns the updated ChatMessage in data, with reaction users populated.
+messageId or reactionType is missing.
 
-Responses:
-- 400: messageId or reactionType is missing.
-- 403: The authenticated user is not a sender or recipient of the message.
-- 404: The message was not found.
-- 401: The access token is missing or invalid.
+##### Response 403
+
+The authenticated user is not part of the conversation.
+
+##### Response 404
+
+The message was not found.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### PATCH /chat/:messageId/pin 🔒
 
 Toggle the shared pin state. Either participant can pin or unpin the message. No request body is required.
 
-**Path Parameters**
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| messageId | string | Yes | MongoDB ObjectId of the message. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| messageId | string | ✅ | MongoDB ObjectId of the message. |
 
-**Responses**
+#### Responses
 
-**Response 200**
+##### Response 200
 
 Pin state toggled successfully.
 
@@ -2974,24 +3690,35 @@ Pin state toggled successfully.
       }
     }
 
-- **400:** `messageId` is missing.
-- **401:** The access token is missing or invalid.
-- **403:** The authenticated user is not part of the conversation.
-- **404:** The message was not found.
+##### Response 400
+
+messageId is missing.
+
+##### Response 401
+
+The access token is missing or invalid.
+
+##### Response 403
+
+The authenticated user is not part of the conversation.
+
+##### Response 404
+
+The message was not found.
 
 ### PATCH /chat/:messageId/star 🔒
 
 Toggle the shared star state. Either participant can star or unstar the message. No request body is required.
 
-**Path Parameters**
+#### Path Parameters
 
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| messageId | string | Yes | MongoDB ObjectId of the message. |
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| messageId | string | ✅ | MongoDB ObjectId of the message. |
 
-**Responses**
+#### Responses
 
-**Response 200**
+##### Response 200
 
 Star state toggled successfully.
 
@@ -3004,50 +3731,100 @@ Star state toggled successfully.
       }
     }
 
-- **400:** `messageId` is missing.
-- **401:** The access token is missing or invalid.
-- **403:** The authenticated user is not part of the conversation.
-- **404:** The message was not found.
+##### Response 400
+
+messageId is missing.
+
+##### Response 401
+
+The access token is missing or invalid.
+
+##### Response 403
+
+The authenticated user is not part of the conversation.
+
+##### Response 404
+
+The message was not found.
 
 ### PATCH /chat/:messageId 🔒
 
-Edit the text of a message sent by the authenticated user. This endpoint does not edit attachments.
+Edit a text message. Attachments cannot be edited through this endpoint.
 
-Path parameter: messageId is the MongoDB ObjectId of the message.
+#### Path Parameters
 
-Request body (application/json):
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| messageId | string | ✅ | MongoDB ObjectId of the message. |
+
+#### Request Body
+
+Content-Type: application/json.
+
+| **Field** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| message | string | ✅ | Updated message text. |
+
+#### Responses
+
+##### Response 200
+
+Message edited successfully.
 
     {
-      "message": "Updated message text"
+      "success": true,
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "message": "Updated message text"
+      }
     }
 
-Response 200: Returns the updated ChatMessage in data.
+##### Response 403
 
-Responses:
-- 403: The authenticated user is not the sender.
-- 404: The message was not found or the new text is empty.
-- 401: The access token is missing or invalid.
+Only the sender may edit the message.
+
+##### Response 404
+
+The message was not found or the new message is empty.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ### DELETE /chat/:messageId 🔒
 
-Soft-delete a message sent by the authenticated user. The record is retained, isDeleted is set to true, and message, imageUrl, fileUrl, fileName, and audioUrl are cleared.
+Soft-delete a message sent by the authenticated user. Message content and attachments are cleared.
 
-Path parameter: messageId is the MongoDB ObjectId of the message.
+#### Path Parameters
 
-Response 200:
+| **Parameter** | **Type** | **Required** | **Description** |
+| --- | --- | --- | --- |
+| messageId | string | ✅ | MongoDB ObjectId of the message. |
+
+#### Responses
+
+##### Response 200
+
+Message deleted successfully.
 
     {
       "success": true,
       "message": "Message deleted successfully"
     }
 
-Responses:
-- 403: The authenticated user is not the sender.
-- 404: The message was not found.
-- 401: The access token is missing or invalid.
+##### Response 403
+
+Only the sender may delete the message.
+
+##### Response 404
+
+The message was not found.
+
+##### Response 401
+
+The access token is missing or invalid.
 
 ---
-
 ## Common HTTP Status Codes
 
 | Code  | Status Text           | Description in Context                                                         |

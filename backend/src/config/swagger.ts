@@ -49,6 +49,10 @@ const options: Options = {
         description: "Notifications management APIs",
       },
       {
+        name: "Stories",
+        description: "Stories management APIs",
+      },
+      {
         name: "Chat",
         description: "Chat & Messaging APIs",
       },

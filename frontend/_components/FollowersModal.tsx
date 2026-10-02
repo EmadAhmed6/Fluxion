@@ -11,7 +11,6 @@ import {
   UserPlus,
   Loader2,
   Briefcase,
-  User as UserIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import {
   useToggleFollowUser,
 } from "@/_features/user/hooks";
 import { FollowUserItem } from "@/_features/user/api/getUserFollowers";
+import StoriesTray from "@/_components/StoriesTray";
 
 export type FollowModalTab = "followers" | "following";
 
@@ -71,25 +71,19 @@ function FollowUserRow({
 
   return (
     <div className="flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-bgPrimary/60 border border-transparent hover:border-borderPrimary/40 transition-all duration-200 group">
-      <Link
-        href={`/profile/${user._id}`}
-        onClick={onUserClick}
-        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-      >
-        <div className="relative shrink-0">
-          {user.profilePicture?.url ? (
-            <img
-              src={user.profilePicture.url}
-              alt={displayName}
-              className="h-11 w-11 rounded-full object-cover border border-primary/25 shadow-sm group-hover:scale-105 transition-transform duration-200"
-            />
-          ) : (
-            <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center border border-primary/20 shadow-sm group-hover:bg-primary/25 transition-colors">
-              <UserIcon className="h-5 w-5" />
-            </div>
-          )}
-        </div>
-
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <Link
+          href={`/profile/${user._id}`}
+          onClick={onUserClick}
+          className="shrink-0 cursor-pointer"
+        >
+          <StoriesTray mode="profile" avatarOnly profileUser={user} />
+        </Link>
+        <Link
+          href={`/profile/${user._id}`}
+          onClick={onUserClick}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
+        >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <Text
@@ -126,7 +120,8 @@ function FollowUserRow({
             </div>
           )}
         </div>
-      </Link>
+        </Link>
+      </div>
 
       {/* Follow / Unfollow Button for this user (hidden if self or not logged in) */}
       {currentUserId && !isSelf && (

@@ -15,6 +15,7 @@ import {
   chatTranslations,
   ChatTranslations,
 } from "@/app/chat/translations";
+import { storyTranslations, StoryTranslations } from "@/app/stories/translations";
 
 
 export interface TranslationSchema {
@@ -26,6 +27,7 @@ export interface TranslationSchema {
   admin: AdminTranslations;
   auth: AuthTranslations;
   chat: ChatTranslations;
+  story: StoryTranslations;
 }
 
 export const translations: Record<Language, TranslationSchema> = {
@@ -38,6 +40,7 @@ export const translations: Record<Language, TranslationSchema> = {
     admin: adminTranslations.en,
     auth: authTranslations.en,
     chat: chatTranslations.en,
+    story: storyTranslations.en,
   },
   ar: {
     nav: navTranslations.ar,
@@ -48,6 +51,6 @@ export const translations: Record<Language, TranslationSchema> = {
     admin: adminTranslations.ar,
     auth: authTranslations.ar,
     chat: chatTranslations.ar,
+    story: storyTranslations.ar,
   },
 };
-

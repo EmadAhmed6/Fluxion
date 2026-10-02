@@ -21,12 +21,24 @@ const errorHandler = (
 };
 
 const sendError = (res: Response, statusCode: number, errorMessage: string) => {
-  return res
-    .status(statusCode)
-    .json({
-      success: false,
-      message: "Request failed",
-      data: { message: errorMessage },
-    });
+  return res.status(statusCode).json({
+    success: false,
+    message: "Request failed",
+    data: { message: errorMessage },
+  });
 };
-export { notFound, errorHandler, sendError };
+
+const successMsg = (
+  res: Response,
+  statusCode: number,
+  successMessage: string,
+  data: any,
+) => {
+  return res.status(statusCode).json({
+    success: true,
+    message: successMessage,
+    data: data,
+  });
+};
+
+export { notFound, errorHandler, sendError, successMsg };

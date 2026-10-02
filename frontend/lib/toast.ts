@@ -72,6 +72,11 @@ const toastTranslationsAr: Record<string, string> = {
 
   // System & Files
   "Image file size should be less than 5MB.": "حجم الصورة لازم يكون أقل من 5 ميجا.",
+  "Story shared successfully!": "تم نشر القصة بنجاح!",
+  "Failed to share story.": "فشل نشر القصة.",
+  "Story deleted successfully!": "تم حذف القصة بنجاح!",
+  "Failed to delete story.": "فشل حذف القصة.",
+  "Failed to react to story.": "فشل التفاعل مع القصة.",
 
   // Server error messages
   "User not found": "اليوزر مش موجود",

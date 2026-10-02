@@ -10,6 +10,7 @@ import fs from "fs";
 import bcrypt from "bcryptjs";
 import Notification from "../notifications/notifications.model.js";
 import { sendError } from "../../middlewares/errors.js";
+import { Story } from "../stories/story.model.js";
 
 // GET ALL USERS
 const getAllUsers = asyncHandler(
@@ -80,7 +81,7 @@ const getAllUsers = asyncHandler(
 // GET USER BY ID
 const getUserById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const targetUserId = req.params.userId;
+    const targetUserId = req.params.userId as string;
     const currentUserId = req.user?.id;
 
     const user = await User.findById(targetUserId)
@@ -172,16 +173,33 @@ const getUserById = asyncHandler(
         );
 
         if (isBlockedByMe || hasBlockedMe) {
-          sendError(res, 403, "You cannot access this profile due to block status");
+          sendError(
+            res,
+            403,
+            "You cannot access this profile due to block status",
+          );
           return;
         }
       }
     }
 
+    const userStories = await Story.find({
+      author: targetUserId,
+      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    })
+      .sort({ createdAt: -1 })
+      .populate("author", "_id username fullName profilePicture")
+      .populate("reactions.user", "_id username fullName profilePicture");
+    const userResponse = {
+      ...user.toObject(),
+      stories: userStories,
+      hasActivityStory: userStories.length > 0,
+    };
+
     res.status(200).json({
       success: true,
       message: "Request processed successfully",
-      data: user,
+      data: userResponse,
     });
     return;
   },
@@ -768,4 +786,3 @@ export {
   unblockUser,
   getBlockedUsers,
 };
-

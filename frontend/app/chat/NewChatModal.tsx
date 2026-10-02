@@ -8,6 +8,7 @@ import { Text } from "@/_components/Text";
 import { useLanguage } from "@/context/LanguageContext";
 import { useGetAllUsers } from "@/_features/user/hooks";
 import { useGetAuthMeQuery } from "@/_features/auth/hooks";
+import StoriesTray from "@/_components/StoriesTray";
 
 interface NewChatModalProps {
   isOpen: boolean;
@@ -126,27 +127,25 @@ export default function NewChatModal({
                   : `@${u.username}`;
 
                 return (
-                  <button
+                  <div
                     key={u._id}
                     onClick={() => {
                       onSelectUser(u);
                       onClose();
                     }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSelectUser(u);
+                        onClose();
+                      }
+                    }}
                     className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-bgPrimary/60 transition-all text-start group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      {u.profilePicture?.url ? (
-                        <img
-                          src={u.profilePicture.url}
-                          alt={displayName}
-                          referrerPolicy="no-referrer"
-                          className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                          <UserIcon className="h-5 w-5" />
-                        </div>
-                      )}
+                      <StoriesTray mode="profile" avatarOnly profileUser={u} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <Text
@@ -180,7 +179,7 @@ export default function NewChatModal({
                     <div className="p-2 rounded-xl bg-primary/10 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                       <MessageSquare className="h-4 w-4" />
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
