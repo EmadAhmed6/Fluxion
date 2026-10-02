@@ -30,6 +30,8 @@ export interface ChatMessage {
   isRead: boolean;
   isEdited?: boolean;
   isForwarded?: boolean;
+  isPinned?: boolean;
+  isStarred?: boolean;
   reactions?: ChatReaction[];
   replyTo?: ChatMessage | string | null;
   createdAt: string;

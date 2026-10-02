@@ -7,14 +7,15 @@ import { Types } from "mongoose";
 import { sendError } from "../../middlewares/errors.js";
 import { file } from "zod";
 import { User } from "../user/user.model.js";
+import { request } from "http";
 
 // SEND MESSAGE
 const sendMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const recipientId = req.params.recipientId;
-    const message = req.body.message;
-    const senderId = req.user?.id;
-    if (!recipientId) {
+    const recipientId = req.params.recipientId as string;
+    const message = req.body.message as string | undefined;
+    const senderId = req.user?.id as string;
+    if (!recipientId && typeof recipientId !== "string") {
       sendError(res, 400, "Valid recipientId is required");
       return;
     }
@@ -52,16 +53,25 @@ const sendMessage = asyncHandler(
     }
 
     const recipient = await User.findById(recipientId);
-    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+    if (
+      recipient?.blockUsers?.some(
+        (id) => id.toString() === senderId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 
     const sender = await User.findById(senderId);
-    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+    if (
+      sender?.blockUsers?.some(
+        (id) => id.toString() === recipientId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
+
     const newMessage = new Chat({
       sender: senderId,
       recipient: recipientId,
@@ -96,11 +106,11 @@ const sendMessage = asyncHandler(
 // EDIT MESSAGE
 const editMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const messageId = req.params.messageId;
-    const newMessage = req.body.message;
-    const currentUserId = req.user?.id;
+    const messageId = req.params.messageId as string;
+    const newMessage = req.body.message as string;
+    const currentUserId = req.user?.id as string;
 
-    if (!messageId) {
+    if (!messageId && typeof messageId !== "string") {
       sendError(res, 400, "Valid messageId is required");
       return;
     }
@@ -148,9 +158,9 @@ const editMessage = asyncHandler(
 // DELETE MESSAGE
 const deleteMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const messageId = req.params.messageId;
-    const currentUserId = req.user?.id;
-    if (!messageId) {
+    const messageId = req.params.messageId as string;
+    const currentUserId = req.user?.id as string;
+    if (!messageId && typeof messageId !== "string") {
       sendError(res, 400, "Valid messageId is required");
       return;
     }
@@ -187,8 +197,8 @@ const deleteMessage = asyncHandler(
 // GET CONVERSATIONS
 const getConversations = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const currentUserId = req.user?.id;
-    if (!currentUserId) {
+    const currentUserId = req.user?.id as string;
+    if (!currentUserId && typeof currentUserId !== "string") {
       sendError(res, 401, "You are not authorized");
       return;
     }
@@ -239,8 +249,8 @@ const getConversations = asyncHandler(
 // GET MESSAGES
 const getMessages = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const userId = req.params.userId;
-    const currentUserId = req.user?.id;
+    const userId = req.params.userId as string;
+    const currentUserId = req.user?.id as string;
     if (!userId || !currentUserId) {
       sendError(res, 400, "Valid userId is required");
       return;
@@ -280,8 +290,8 @@ const getMessages = asyncHandler(
 // MARK AS READ
 const markAsRead = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const userId = req.params.userId;
-    const currentUserId = req.user?.id;
+    const userId = req.params.userId as string;
+    const currentUserId = req.user?.id as string;
     if (!userId || !currentUserId) {
       sendError(res, 400, "Valid userId is required");
       return;
@@ -302,10 +312,10 @@ const markAsRead = asyncHandler(
 // REPLY MESSAGE
 const replyMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const messageId = req.params.messageId;
-    const recipientId = req.params.recipientId;
-    const senderId = req.user?.id;
-    const message = req.body.message;
+    const messageId = req.params.messageId as string;
+    const recipientId = req.params.recipientId as string;
+    const senderId = req.user?.id as string;
+    const message = req.body.message as string | undefined;
 
     if (!recipientId || !senderId) {
       sendError(res, 400, "Valid recipientId is required");
@@ -360,13 +370,21 @@ const replyMessage = asyncHandler(
     }
 
     const recipient = await User.findById(recipientId);
-    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+    if (
+      recipient?.blockUsers?.some(
+        (id) => id.toString() === senderId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 
     const sender = await User.findById(senderId);
-    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+    if (
+      sender?.blockUsers?.some(
+        (id) => id.toString() === recipientId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
@@ -406,15 +424,15 @@ const replyMessage = asyncHandler(
 // FORWARD MESSAGE
 const forwardMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const messageId = req.params.messageId;
-    const recipientId = req.params.recipientId;
-    const senderId = req.user?.id;
+    const messageId = req.params.messageId as string;
+    const recipientId = req.params.recipientId as string;
+    const senderId = req.user?.id as string;
 
-    if (!messageId) {
+    if (!messageId && typeof messageId !== "string") {
       sendError(res, 400, "Valid messageId is required");
       return;
     }
-    if (!recipientId) {
+    if (!recipientId && typeof recipientId !== "string") {
       sendError(res, 400, "Valid recipientId is required");
       return;
     }
@@ -425,13 +443,21 @@ const forwardMessage = asyncHandler(
     }
 
     const recipient = await User.findById(recipientId);
-    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+    if (
+      recipient?.blockUsers?.some(
+        (id) => id.toString() === senderId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 
     const sender = await User.findById(senderId);
-    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+    if (
+      sender?.blockUsers?.some(
+        (id) => id.toString() === recipientId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
@@ -498,9 +524,9 @@ const forwardMessage = asyncHandler(
 // REACT MESSAGE
 const reactMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const messageId = req.params.messageId;
+    const messageId = req.params.messageId as string;
     const reactionType = req.body.reactionType;
-    const currentUserId = req.user?.id;
+    const currentUserId = req.user?.id as string;
 
     if (!messageId || !reactionType) {
       res.status(400).json({
@@ -567,13 +593,14 @@ const reactMessage = asyncHandler(
   },
 );
 
+// SEND AUDIO MESSAGE
 const sendAudioMessage = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const recipientId = req.params.recipientId;
-    const senderId = req.user?.id;
-    const replyToId = req.body.replyTo;
+    const recipientId = req.params.recipientId as string;
+    const senderId = req.user?.id as string;
+    const replyToId = req.body.replyTo as string | undefined;
 
-    if (!recipientId) {
+    if (!recipientId && typeof recipientId !== "string") {
       sendError(res, 400, "Valid recipientId is required");
       return;
     }
@@ -588,13 +615,21 @@ const sendAudioMessage = asyncHandler(
     }
 
     const recipient = await User.findById(recipientId);
-    if (recipient?.blockUsers?.some((id) => id.toString() === senderId?.toString())) {
+    if (
+      recipient?.blockUsers?.some(
+        (id) => id.toString() === senderId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
 
     const sender = await User.findById(senderId);
-    if (sender?.blockUsers?.some((id) => id.toString() === recipientId?.toString())) {
+    if (
+      sender?.blockUsers?.some(
+        (id) => id.toString() === recipientId?.toString(),
+      )
+    ) {
       sendError(res, 403, "You are blocked from messaging this user");
       return;
     }
@@ -645,6 +680,170 @@ const sendAudioMessage = asyncHandler(
   },
 );
 
+// PIN MESSAGE
+const pinMessage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const messageId = req.params.messageId as string;
+    const currentUserId = req.user?.id as string;
+    if (!messageId) {
+      sendError(res, 400, "Valid messageId is required");
+      return;
+    }
+
+    const message = await Chat.findById(messageId);
+    if (!message) {
+      sendError(res, 404, "Message was not found");
+      return;
+    }
+
+    const isSender = message?.sender.toString() === currentUserId.toString();
+    const isRecipient =
+      message?.recipient.toString() === currentUserId.toString();
+
+    if (!isSender && !isRecipient) {
+      sendError(res, 403, "You are not authorized to pin this message");
+      return;
+    }
+
+    message.isPinned = !message.isPinned;
+    await message.save();
+
+    const updatedMessage = await Chat.findById(message._id)
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture");
+
+    res.status(200).json({
+      success: true,
+      message: "Request succeed",
+      data: updatedMessage,
+    });
+  },
+);
+
+// PINNED MESSAGES
+const getPinnedMessages = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const currentUserId = req.user?.id as string;
+    const recipientId = req.params.userId as string;
+
+    if (!recipientId || !currentUserId) {
+      sendError(res, 400, "Valid recipient ID is required");
+      return;
+    }
+    const pinnedMessages = await Chat.find({
+      isPinned: true,
+      $or: [
+        {
+          sender: currentUserId,
+          recipient: recipientId,
+        },
+        {
+          sender: recipientId,
+          recipient: currentUserId,
+        },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      message: "Request Succeed",
+      data: {
+        message: "Pinned messages of the user",
+        data: pinnedMessages,
+      },
+    });
+  },
+);
+
+// STAR MESSAGE
+const starMessage = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const messageId = req.params.messageId as string;
+    const currentUserId = req.user?.id as string;
+    if (!messageId) {
+      sendError(res, 400, "Valid messageId is required");
+      return;
+    }
+
+    const message = await Chat.findById(messageId);
+    if (!message) {
+      sendError(res, 404, "Message was not found");
+      return;
+    }
+    const isSender = message?.sender.toString() === currentUserId.toString();
+    const isRecipient =
+      message?.recipient.toString() === currentUserId.toString();
+
+    if (!isSender && !isRecipient) {
+      sendError(res, 403, "You are not authorized to star this message");
+      return;
+    }
+
+    message.isStarred = !message.isStarred;
+    await message.save();
+
+    const updatedMessage = await Chat.findById(message._id)
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture");
+
+    res.status(200).json({
+      success: true,
+      message: "Request succeed",
+      data: updatedMessage,
+    });
+  },
+);
+
+const getStarredMessages = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const currentUserId = req.user?.id as string;
+    const recipientId = req.params.userId as string;
+    if (!recipientId || !currentUserId) {
+      sendError(res, 400, "Valid userId is required");
+      return;
+    }
+    const starredMessages = await Chat.find({
+      isStarred: true,
+      $or: [
+        { sender: currentUserId, recipient: recipientId },
+        { sender: recipientId, recipient: currentUserId },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .populate("sender", "username fullName profilePicture role")
+      .populate("recipient", "username fullName profilePicture role")
+      .populate("reactions.user", "username fullName profilePicture")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username fullName profilePicture",
+        },
+      });
+    res.status(200).json({
+      success: true,
+      message: "Request succeed",
+      data: {
+        message: "Starred messages of the user",
+        data: starredMessages,
+      },
+    });
+  },
+);
+
 export {
   sendMessage,
   editMessage,
@@ -656,4 +855,8 @@ export {
   replyMessage,
   forwardMessage,
   sendAudioMessage,
+  pinMessage,
+  starMessage,
+  getStarredMessages,
+  getPinnedMessages,
 };

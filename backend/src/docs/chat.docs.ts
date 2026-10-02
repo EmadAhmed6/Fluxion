@@ -4,8 +4,12 @@
 // ├── POST   /chat/{recipientId}/{messageId}/reply
 // ├── POST   /chat/{recipientId}/{messageId}/forward
 // ├── GET    /chat/{userId}
+// ├── GET    /chat/{userId}/pinned
+// ├── GET    /chat/{userId}/starred
 // ├── PATCH  /chat/{userId}/read
 // ├── PATCH  /chat/{messageId}/react
+// ├── PATCH  /chat/{messageId}/pin
+// ├── PATCH  /chat/{messageId}/star
 // ├── PATCH  /chat/{messageId}
 // └── DELETE /chat/{messageId}
 
@@ -268,7 +272,93 @@
 
 /**
  * @swagger
- * /chat/{id}:
+ * /chat/{messageId}/pin:
+ *   patch:
+ *     summary: Toggle a message pin
+ *     description: Toggle the conversation-wide pinned state. Either participant may pin or unpin the message; both participants see the resulting isPinned value. No request body is required.
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the message to pin or unpin
+ *     responses:
+ *       200:
+ *         description: Pinned state toggled; returns the updated message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request succeed
+ *                 data:
+ *                   $ref: '#/components/schemas/ChatMessage'
+ *       400:
+ *         description: Message ID is missing
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: The authenticated user is not part of the message conversation
+ *       404:
+ *         description: Message was not found
+ */
+
+/**
+ * @swagger
+ * /chat/{messageId}/star:
+ *   patch:
+ *     summary: Toggle a message star
+ *     description: Toggle the conversation-wide starred state. Either participant may star or unstar the message; both participants see the resulting isStarred value. No request body is required.
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the message to star or unstar
+ *     responses:
+ *       200:
+ *         description: Starred state toggled; returns the updated message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Request succeed
+ *                 data:
+ *                   $ref: '#/components/schemas/ChatMessage'
+ *       400:
+ *         description: Message ID is missing
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: The authenticated user is not part of the message conversation
+ *       404:
+ *         description: Message was not found
+ */
+
+/**
+ * @swagger
+ * /chat/{userId}:
  *   get:
  *     summary: Get chat message history with a user
  *     description: Retrieve the full message history between the authenticated user and the specified user, sorted chronologically. Automatically marks unread incoming messages as read.
@@ -278,7 +368,7 @@
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: userId
  *         required: true
  *         schema:
  *           type: string
@@ -301,6 +391,94 @@
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/ChatMessage'
+ *       400:
+ *         description: Valid userId is required
+ *       401:
+ *         description: Not authorized
+ */
+
+/**
+ * @swagger
+ * /chat/{userId}/pinned:
+ *   get:
+ *     summary: Get pinned messages in a conversation
+ *     description: Retrieve messages pinned in the conversation by either participant, newest first. Pin state is shared by both participants.
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the other user in the conversation
+ *     responses:
+ *       200:
+ *         description: Pinned messages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: Pinned messages of the user
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ChatMessage'
+ *       400:
+ *         description: Valid userId is required
+ *       401:
+ *         description: Not authorized
+ */
+
+/**
+ * @swagger
+ * /chat/{userId}/starred:
+ *   get:
+ *     summary: Get starred messages in a conversation
+ *     description: Retrieve messages starred in the conversation by either participant, newest first. Star state is shared by both participants.
+ *     tags:
+ *       - Chat
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the other user in the conversation
+ *     responses:
+ *       200:
+ *         description: Starred messages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: Starred messages of the user
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ChatMessage'
  *       400:
  *         description: Valid userId is required
  *       401:
@@ -398,7 +576,7 @@
 
 /**
  * @swagger
- * /chat/{id}:
+ * /chat/{messageId}:
  *   patch:
  *     summary: Edit a chat message
  *     description: Update the text of a message sent by the authenticated user. Empty text is rejected; attachments are not edited by this endpoint.
@@ -408,7 +586,7 @@
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: messageId
  *         required: true
  *         schema:
  *           type: string
@@ -453,7 +631,7 @@
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: messageId
  *         required: true
  *         schema:
  *           type: string
@@ -569,6 +747,14 @@
  *           example: false
  *         isForwarded:
  *           type: boolean
+ *           example: false
+ *         isPinned:
+ *           type: boolean
+ *           description: Whether this message is pinned in the conversation. The state is shared by both participants.
+ *           example: false
+ *         isStarred:
+ *           type: boolean
+ *           description: Whether this message is starred in the conversation. The state is shared by both participants.
  *           example: false
  *         createdAt:
  *           type: string

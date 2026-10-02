@@ -16,6 +16,22 @@ export const getMessages = async (userId: string): Promise<ChatMessage[]> => {
   return res.data?.data || [];
 };
 
+const getMessageList = async (
+  userId: string,
+  list: "pinned" | "starred",
+): Promise<ChatMessage[]> => {
+  if (!userId) return [];
+  const res = await axiosClient.get(`/chat/${userId}/${list}`);
+  const messages = res.data?.data?.data;
+  return Array.isArray(messages) ? messages : [];
+};
+
+export const getPinnedMessages = (userId: string): Promise<ChatMessage[]> =>
+  getMessageList(userId, "pinned");
+
+export const getStarredMessages = (userId: string): Promise<ChatMessage[]> =>
+  getMessageList(userId, "starred");
+
 export const sendMessage = async ({
   recipientId,
   message,
@@ -100,6 +116,16 @@ export const reactMessage = async ({
   const res = await axiosClient.patch(`/chat/${messageId}/react`, {
     reactionType,
   });
+  return res.data?.data;
+};
+
+export const pinMessage = async (messageId: string): Promise<ChatMessage> => {
+  const res = await axiosClient.patch(`/chat/${messageId}/pin`);
+  return res.data?.data;
+};
+
+export const starMessage = async (messageId: string): Promise<ChatMessage> => {
+  const res = await axiosClient.patch(`/chat/${messageId}/star`);
   return res.data?.data;
 };
 

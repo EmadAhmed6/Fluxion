@@ -39,6 +39,20 @@ export interface ChatTranslations {
   reactionAngry: string;
   reactionEggs: string;
   forwardMessage: string;
+  pinMessage: string;
+  unpinMessage: string;
+  pinned: string;
+  youPinnedMessage: string;
+  starMessage: string;
+  unstarMessage: string;
+  starred: string;
+  allMessages: string;
+  pinnedMessages: string;
+  starredMessages: string;
+  noPinnedMessages: string;
+  noStarredMessages: string;
+  previousPinnedMessage: string;
+  nextPinnedMessage: string;
   chooseForwardRecipient: string;
   forwarded: string;
   emojiPicker: string;
@@ -93,6 +107,20 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     reactionAngry: "Angry",
     reactionEggs: "Eggs",
     forwardMessage: "Forward message",
+    pinMessage: "Pin message",
+    unpinMessage: "Unpin message",
+    pinned: "Pinned",
+    youPinnedMessage: "You pinned a message",
+    starMessage: "Star message",
+    unstarMessage: "Remove star",
+    starred: "Starred",
+    allMessages: "All messages",
+    pinnedMessages: "Pinned",
+    starredMessages: "Starred",
+    noPinnedMessages: "No pinned messages",
+    noStarredMessages: "No starred messages",
+    previousPinnedMessage: "Previous pinned message",
+    nextPinnedMessage: "Next pinned message",
     chooseForwardRecipient: "Choose someone to forward this message to",
     forwarded: "Forwarded",
     emojiPicker: "Add emoji",
@@ -145,6 +173,20 @@ export const chatTranslations: Record<"en" | "ar", ChatTranslations> = {
     reactionAngry: "أغضبني",
     reactionEggs: "ابضنني",
     forwardMessage: "إعادة توجيه الرسالة",
+    pinMessage: "تثبيت الرسالة",
+    unpinMessage: "إلغاء تثبيت الرسالة",
+    pinned: "مثبّتة",
+    youPinnedMessage: "لقد ثبّت رسالة",
+    starMessage: "تمييز بنجمة",
+    unstarMessage: "إزالة النجمة",
+    starred: "مميزة بنجمة",
+    allMessages: "كل الرسائل",
+    pinnedMessages: "المثبتة",
+    starredMessages: "المميزة بنجمة",
+    noPinnedMessages: "لا توجد رسائل مثبتة",
+    noStarredMessages: "لا توجد رسائل مميزة بنجمة",
+    previousPinnedMessage: "الرسالة المثبتة السابقة",
+    nextPinnedMessage: "الرسالة المثبتة التالية",
     chooseForwardRecipient: "اختر شخصًا لإعادة توجيه الرسالة إليه",
     forwarded: "تمت إعادة التوجيه",
     emojiPicker: "إضافة إيموجي",

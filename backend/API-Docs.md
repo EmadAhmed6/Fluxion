@@ -103,8 +103,12 @@ Protected routes require JSON Web Token (JWT) authentication using a dual-token 
 | 50  | GET    | `/chat/:userId`                                                   | Retrieve conversation history and mark incoming messages read    |  🔒  |        —         |
 | 51  | PATCH  | `/chat/:userId/read`                                              | Mark unread messages from a user as read                         |  🔒  |        —         |
 | 52  | PATCH  | `/chat/:messageId/react`                                          | Add, change, or remove a reaction on a message                    |  🔒  |        —         |
-| 53  | PATCH  | `/chat/:messageId`                                                | Edit a message's text (sender only)                               |  🔒  |        —         |
-| 54  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
+| 53  | PATCH  | `/chat/:messageId/pin`                                            | Pin or unpin a message in a conversation                          |  🔒  |        —         |
+| 54  | PATCH  | `/chat/:messageId/star`                                           | Star or unstar a message in a conversation                        |  🔒  |        —         |
+| 55  | PATCH  | `/chat/:messageId`                                                | Edit a message's text (sender only)                               |  🔒  |        —         |
+| 56  | DELETE | `/chat/:messageId`                                                | Soft-delete a message and clear its content (sender only)         |  🔒  |        —         |
+| 57  | GET    | `/chat/:userId/pinned`                                            | Retrieve pinned messages in a conversation                        |  🔒  |        —         |
+| 58  | GET    | `/chat/:userId/starred`                                           | Retrieve starred messages in a conversation                       |  🔒  |        —         |
 
 ---
 
@@ -2739,6 +2743,8 @@ Response 201:
         "isRead": false,
         "isEdited": false,
         "isForwarded": false,
+        "isPinned": false,
+        "isStarred": false,
         "reactions": [],
         "createdAt": "2026-09-29T14:30:00.000Z",
         "updatedAt": "2026-09-29T14:30:00.000Z"
@@ -2838,6 +2844,8 @@ Response 200:
           "isRead": true,
           "isEdited": false,
           "isForwarded": false,
+          "isPinned": false,
+          "isStarred": false,
           "createdAt": "2026-09-29T14:30:00.000Z",
           "updatedAt": "2026-09-29T14:30:00.000Z"
         }
@@ -2863,6 +2871,30 @@ Responses:
 - 400: userId is missing or invalid.
 - 401: The access token is missing or invalid.
 
+### GET /chat/:userId/pinned 🔒
+
+Retrieve pinned messages in the conversation with userId, ordered newest first. `isPinned` is a conversation-wide state: messages pinned by either participant are included, and both participants see the pinned state.
+
+Path parameter: userId is the conversation partner's MongoDB ObjectId.
+
+Response 200: Returns `data.data` as the array of pinned ChatMessage objects.
+
+Responses:
+- 400: userId is missing.
+- 401: The access token is missing or invalid.
+
+### GET /chat/:userId/starred 🔒
+
+Retrieve starred messages in the conversation with userId, ordered newest first. `isStarred` is a conversation-wide state: messages starred by either participant are included, and both participants see the starred state.
+
+Path parameter: userId is the conversation partner's MongoDB ObjectId.
+
+Response 200: Returns `data.data` as the array of starred ChatMessage objects.
+
+Responses:
+- 400: userId is missing.
+- 401: The access token is missing or invalid.
+
 ### PATCH /chat/:messageId/react 🔒
 
 Add a reaction from the authenticated user, change their existing reaction, or remove it by sending the same reaction again.
@@ -2884,6 +2916,56 @@ Responses:
 - 403: The authenticated user is not a sender or recipient of the message.
 - 404: The message was not found.
 - 401: The access token is missing or invalid.
+
+### PATCH /chat/:messageId/pin 🔒
+
+Toggle the conversation-wide pinned state of a message. Either participant in the conversation may pin or unpin it; the request has no body. The resulting `isPinned` value is returned on the updated message and is visible to both participants.
+
+Path parameter: messageId is the MongoDB ObjectId of the message.
+
+Response 200:
+
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "isPinned": true
+      }
+    }
+
+`data` is the updated ChatMessage and includes its new `isPinned` value.
+
+Responses:
+- 400: messageId is missing.
+- 401: The access token is missing or invalid.
+- 403: The authenticated user is not part of the message conversation.
+- 404: The message was not found.
+
+### PATCH /chat/:messageId/star 🔒
+
+Toggle the conversation-wide starred state of a message. Either participant in the conversation may star or unstar it; the request has no body. The resulting `isStarred` value is returned on the updated message and is visible to both participants.
+
+Path parameter: messageId is the MongoDB ObjectId of the message.
+
+Response 200:
+
+    {
+      "success": true,
+      "message": "Request succeed",
+      "data": {
+        "_id": "65f1a2b3c4d5e6f789012399",
+        "isStarred": true
+      }
+    }
+
+`data` is the updated ChatMessage and includes its new `isStarred` value.
+
+Responses:
+- 400: messageId is missing.
+- 401: The access token is missing or invalid.
+- 403: The authenticated user is not part of the message conversation.
+- 404: The message was not found.
 
 ### PATCH /chat/:messageId 🔒
 

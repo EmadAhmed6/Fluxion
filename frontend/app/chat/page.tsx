@@ -8,11 +8,15 @@ import Navbar from "@/_components/Navbar";
 import {
   useGetConversations,
   useGetMessages,
+  useGetPinnedMessages,
+  useGetStarredMessages,
   useSendMessage,
   useEditMessage,
   useDeleteMessage,
   useMarkAsRead,
   useReactMessage,
+  usePinMessage,
+  useStarMessage,
   useForwardMessage,
   useSendAudioMessage,
   ChatUser,
@@ -56,6 +60,12 @@ import {
   Clock,
   Sparkles,
   Loader2,
+  Pin,
+  PinOff,
+  MoreVertical,
+  Star,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EmojiClickData, EmojiStyle, Theme } from "emoji-picker-react";
@@ -119,6 +129,121 @@ const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ),
 });
 
+interface MessageActionsMenuProps {
+  isMe: boolean;
+  isOpen: boolean;
+  isPinned: boolean;
+  isStarred: boolean;
+  hasText: boolean;
+  isPinPending: boolean;
+  isStarPending: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onReply: () => void;
+  onForward: () => void;
+  onPin: () => void;
+  onStar: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function MessageActionsMenu({
+  isMe,
+  isOpen,
+  isPinned,
+  isStarred,
+  hasText,
+  isPinPending,
+  isStarPending,
+  onToggle,
+  onClose,
+  onReply,
+  onForward,
+  onPin,
+  onStar,
+  onEdit,
+  onDelete,
+}: MessageActionsMenuProps) {
+  const { t, isArabic } = useLanguage();
+  const runAction = (action: () => void) => {
+    onClose();
+    action();
+  };
+
+  return (
+    <div className="relative shrink-0 mb-1" data-message-actions-menu>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={isArabic ? "إجراءات الرسالة" : "Message actions"}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        className="p-1.5 rounded-full text-textSecondary hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {isOpen && (
+        <div
+          role="menu"
+          className={`absolute top-full z-[70] mt-1 min-w-44 rounded-xl border border-borderPrimary bg-bgPrimary p-1.5 shadow-xl ${isMe ? "ltr:right-0 rtl:left-0" : "ltr:left-0 rtl:right-0"}`}
+        >
+          <button role="menuitem" type="button" onClick={() => runAction(onReply)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary">
+            <Reply className="h-3.5 w-3.5" />{t.chat.reply}
+          </button>
+          <button role="menuitem" type="button" onClick={() => runAction(onForward)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary">
+            <Forward className="h-3.5 w-3.5" />{t.chat.forwardMessage}
+          </button>
+          <button role="menuitem" type="button" disabled={isPinPending} onClick={() => runAction(onPin)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary disabled:cursor-not-allowed disabled:opacity-50">
+            <Pin className="h-3.5 w-3.5" />{isPinned ? t.chat.unpinMessage : t.chat.pinMessage}
+          </button>
+          <button role="menuitem" type="button" disabled={isStarPending} onClick={() => runAction(onStar)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary disabled:cursor-not-allowed disabled:opacity-50">
+            <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-amber-400 text-amber-500" : ""}`} />{isStarred ? t.chat.unstarMessage : t.chat.starMessage}
+          </button>
+          {isMe && hasText && (
+            <button role="menuitem" type="button" onClick={() => runAction(onEdit)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-textPrimary hover:bg-bgSecondary">
+              <Pencil className="h-3.5 w-3.5" />{t.chat.editMessage}
+            </button>
+          )}
+          {isMe && (
+            <button role="menuitem" type="button" onClick={() => runAction(onDelete)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-start text-xs text-rose-500 hover:bg-rose-500/10">
+              <Trash2 className="h-3.5 w-3.5" />{t.chat.deleteMessage}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageStateIcons({
+  isPinned,
+  isStarred,
+  pinnedLabel,
+  starredLabel,
+}: {
+  isPinned: boolean;
+  isStarred: boolean;
+  pinnedLabel: string;
+  starredLabel: string;
+}) {
+  if (!isPinned && !isStarred) return null;
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      {isPinned && (
+        <span title={pinnedLabel}>
+          <Pin aria-hidden="true" className="h-3 w-3 text-current" />
+        </span>
+      )}
+      {isStarred && (
+        <span title={starredLabel}>
+          <Star aria-hidden="true" className="h-3 w-3 fill-amber-400 text-amber-500" />
+        </span>
+      )}
+    </span>
+  );
+}
+
 function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,6 +262,9 @@ function ChatContent() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
   const [deleteModalMessageId, setDeleteModalMessageId] = useState<string | null>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [messageView, setMessageView] = useState<"all" | "starred">("all");
+  const [pinnedSlideIndex, setPinnedSlideIndex] = useState(0);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -149,6 +277,7 @@ function ChatContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
@@ -166,12 +295,30 @@ function ChatContent() {
   const activeUserId = activeUser?._id || "";
   const { data: messages = [], isLoading: isMessagesLoading } =
     useGetMessages(activeUserId);
+  const { data: pinnedMessages = [] } = useGetPinnedMessages(activeUserId);
+  const { data: starredMessages = [], isLoading: isStarredMessagesLoading } =
+    useGetStarredMessages(activeUserId);
+  const displayedMessages = messageView === "starred" ? starredMessages : messages;
+  const isDisplayedMessagesLoading =
+    messageView === "starred" ? isStarredMessagesLoading : isMessagesLoading;
+  const pinnedMessage = pinnedMessages[pinnedSlideIndex];
+
+  useEffect(() => {
+    setPinnedSlideIndex((index) => Math.min(index, Math.max(0, pinnedMessages.length - 1)));
+  }, [pinnedMessages.length]);
+
+  useEffect(() => {
+    setPinnedSlideIndex(0);
+    setMessageView("all");
+  }, [activeUserId]);
 
   const sendMessageMutation = useSendMessage();
   const editMessageMutation = useEditMessage();
   const deleteMessageMutation = useDeleteMessage();
   const markAsReadMutation = useMarkAsRead();
   const reactMessageMutation = useReactMessage();
+  const pinMessageMutation = usePinMessage();
+  const starMessageMutation = useStarMessage();
   const forwardMessageMutation = useForwardMessage();
   const sendAudioMessageMutation = useSendAudioMessage();
 
@@ -272,6 +419,29 @@ function ChatContent() {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isMessagesLoading]);
+
+  useEffect(() => {
+    if (!openMessageMenuId) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest("[data-message-actions-menu]")
+      ) {
+        setOpenMessageMenuId(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMessageMenuId(null);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMessageMenuId]);
 
   // Handle any file attachment
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -850,25 +1020,112 @@ function ChatContent() {
                     </div>
                   </div>
 
-                  <Link href={`/profile/${activeUser._id}`}>
+                  <div className="flex shrink-0 items-center gap-2">
                     <Button
-                      variant="outline"
+                      type="button"
+                      variant={messageView === "starred" ? "default" : "outline"}
                       size="sm"
-                      className="rounded-xl text-xs cursor-pointer border-borderPrimary/60 hover:border-primary/50"
+                      aria-pressed={messageView === "starred"}
+                      onClick={() =>
+                        setMessageView((view) => view === "starred" ? "all" : "starred")
+                      }
+                      className={`rounded-xl text-xs cursor-pointer gap-1.5 ${messageView === "starred" ? "bg-primary text-white" : "border-borderPrimary/60 hover:border-primary/50"}`}
                     >
-                      {t.nav.viewProfile}
+                      <Star className="h-3.5 w-3.5" />
+                      {messageView === "starred" ? t.chat.allMessages : t.chat.starredMessages}
+                      {messageView !== "starred" && (
+                        <span className="text-[10px] opacity-75">{starredMessages.length}</span>
+                      )}
                     </Button>
-                  </Link>
+                    <Link href={`/profile/${activeUser._id}`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl text-xs cursor-pointer border-borderPrimary/60 hover:border-primary/50"
+                      >
+                        {t.nav.viewProfile}
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
+
+                {messageView === "all" && pinnedMessage && (
+                  <div className="flex w-full items-center gap-2 border-b border-borderPrimary/40 bg-bgSecondary/95 px-4 py-3 sm:px-6">
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.button
+                        key={pinnedMessage._id}
+                        type="button"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.16 }}
+                        onClick={() => messageRefs.current[pinnedMessage._id]?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-start"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Pin className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-semibold text-textPrimary">{t.chat.youPinnedMessage}</span>
+                          <span className="block truncate text-[11px] text-textSecondary">
+                            {(pinnedMessage.message || "").trim() ||
+                              (pinnedMessage.imageUrl
+                                ? `📷 ${t.chat.photo}`
+                                : pinnedMessage.audioUrl
+                                  ? `🎙️ ${t.chat.voiceMessage}`
+                                  : pinnedMessage.fileName || t.chat.fileAttachment)}
+                          </span>
+                        </span>
+                      </motion.button>
+                    </AnimatePresence>
+                    <div className="flex shrink-0 items-center gap-1 text-textSecondary">
+                      {pinnedMessages.length > 1 && (
+                        <>
+                          <span className="px-1 text-[10px] tabular-nums">
+                            {pinnedSlideIndex + 1}/{pinnedMessages.length}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={t.chat.previousPinnedMessage}
+                            title={t.chat.previousPinnedMessage}
+                            onClick={() => setPinnedSlideIndex((index) => (index - 1 + pinnedMessages.length) % pinnedMessages.length)}
+                            className="cursor-pointer p-1.5 hover:text-primary"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t.chat.nextPinnedMessage}
+                            title={t.chat.nextPinnedMessage}
+                            onClick={() => setPinnedSlideIndex((index) => (index + 1) % pinnedMessages.length)}
+                            className="cursor-pointer p-1.5 hover:text-primary"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={t.chat.unpinMessage}
+                        title={t.chat.unpinMessage}
+                        disabled={pinMessageMutation.isPending}
+                        onClick={() => pinMessageMutation.mutate(pinnedMessage._id)}
+                        className="cursor-pointer rounded-md p-1.5 hover:bg-bgPrimary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <PinOff className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Messages Feed */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                  {isMessagesLoading ? (
+                  {isDisplayedMessagesLoading ? (
                     <div className="py-20 text-center text-xs text-textSecondary">
                       <Loader2 className="h-7 w-7 animate-spin text-primary mx-auto mb-2" />
                       <span>{isArabic ? "جاري تحميل الرسائل..." : "Loading messages..."}</span>
                     </div>
-                  ) : messages.length === 0 ? (
+                  ) : displayedMessages.length === 0 && messageView === "all" ? (
                     <div className="py-20 text-center px-4 space-y-3">
                       <div className="h-14 w-14 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mx-auto shadow-inner">
                         <Sparkles className="h-7 w-7" />
@@ -883,8 +1140,13 @@ function ChatContent() {
                           : "Say hello, ask a question, or share an idea."}
                       </Text>
                     </div>
+                  ) : displayedMessages.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-textSecondary">
+                      {t.chat.noStarredMessages}
+                    </div>
                   ) : (
-                    messages.map((msg: ChatMessage) => {
+                    <>
+                    {displayedMessages.map((msg: ChatMessage) => {
                       const isMe =
                         typeof msg.sender === "string"
                           ? msg.sender === currentUser?._id
@@ -946,6 +1208,10 @@ function ChatContent() {
                       return (
                         <div
                           key={msg._id}
+                          ref={(element) => {
+                            messageRefs.current[msg._id] = element;
+                          }}
+                          id={`chat-message-${msg._id}`}
                           className={`flex items-end gap-1.5 group relative hover:z-50 focus-within:z-50 ${
                             isMe ? "justify-end" : "justify-start"
                           }`}
@@ -969,9 +1235,9 @@ function ChatContent() {
                             </div>
                           )}
 
-                          {/* Action Buttons on Hover for Sent Messages (React, Edit & Delete) */}
+                          {/* Reactions stay visible; other actions live in the dropdown. */}
                           {isMe && !msg.isDeleted && (
-                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity mb-1 shrink-0">
+                            <div className="flex items-center gap-0.5 mb-1 shrink-0">
                               <MessageReactions
                                 message={msg}
                                 currentUserId={currentUser?._id || ""}
@@ -984,48 +1250,23 @@ function ChatContent() {
                                 }
                                 isPending={reactMessageMutation.isPending}
                               />
-                              <Tooltip content={t.chat.reply} position="top">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartReply(msg)}
-                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                  aria-label={t.chat.reply}
-                                >
-                                  <Reply className="h-3.5 w-3.5" />
-                                </button>
-                              </Tooltip>
-                              <Tooltip content={t.chat.forwardMessage} position="top">
-                                <button
-                                  type="button"
-                                  onClick={() => handleForwardMessage(msg)}
-                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                  aria-label={t.chat.forwardMessage}
-                                >
-                                  <Forward className="h-3.5 w-3.5" />
-                                </button>
-                              </Tooltip>
-                              {hasText && (
-                                <Tooltip content={t.chat.editMessage} position="top">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartEdit(msg)}
-                                    className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                    aria-label={t.chat.editMessage}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                </Tooltip>
-                              )}
-                              <Tooltip content={t.chat.deleteMessage} position="top">
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteModalMessageId(msg._id)}
-                                  className="p-1.5 rounded-lg hover:bg-rose-500/10 text-textSecondary hover:text-rose-500 transition-colors cursor-pointer"
-                                  aria-label={t.chat.deleteMessage}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </Tooltip>
+                              <MessageActionsMenu
+                                isMe
+                                isOpen={openMessageMenuId === msg._id}
+                                isPinned={Boolean(msg.isPinned)}
+                                isStarred={Boolean(msg.isStarred)}
+                                hasText={hasText}
+                                isPinPending={pinMessageMutation.isPending}
+                                isStarPending={starMessageMutation.isPending}
+                                onToggle={() => setOpenMessageMenuId(openMessageMenuId === msg._id ? null : msg._id)}
+                                onClose={() => setOpenMessageMenuId(null)}
+                                onReply={() => handleStartReply(msg)}
+                                onForward={() => handleForwardMessage(msg)}
+                                onPin={() => pinMessageMutation.mutate(msg._id)}
+                                onStar={() => starMessageMutation.mutate(msg._id)}
+                                onEdit={() => handleStartEdit(msg)}
+                                onDelete={() => setDeleteModalMessageId(msg._id)}
+                              />
                             </div>
                           )}
 
@@ -1084,6 +1325,12 @@ function ChatContent() {
                                 <div
                                   className="flex items-center justify-end gap-1 text-[10px] mt-1 text-textSecondary"
                                 >
+                                  <MessageStateIcons
+                                    isPinned={Boolean(msg.isPinned)}
+                                    isStarred={Boolean(msg.isStarred)}
+                                    pinnedLabel={t.chat.pinned}
+                                    starredLabel={t.chat.starred}
+                                  />
                                   <span suppressHydrationWarning>{timeFormatted}</span>
                                   {isMe &&
                                     (msg.isRead ? (
@@ -1106,6 +1353,12 @@ function ChatContent() {
                                 />
                                 {/* Floating timestamp pill over image */}
                                 <div className="absolute bottom-1.5 ltr:right-2 rtl:left-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[10px] flex items-center gap-1 shadow-xs pointer-events-none select-none">
+                                  <MessageStateIcons
+                                    isPinned={Boolean(msg.isPinned)}
+                                    isStarred={Boolean(msg.isStarred)}
+                                    pinnedLabel={t.chat.pinned}
+                                    starredLabel={t.chat.starred}
+                                  />
                                   <span suppressHydrationWarning>{timeFormatted}</span>
                                   {isMe &&
                                     (msg.isRead ? (
@@ -1198,6 +1451,12 @@ function ChatContent() {
                                         {t.chat.edited}
                                       </span>
                                     )}
+                                    <MessageStateIcons
+                                      isPinned={Boolean(msg.isPinned)}
+                                      isStarred={Boolean(msg.isStarred)}
+                                      pinnedLabel={t.chat.pinned}
+                                      starredLabel={t.chat.starred}
+                                    />
                                     <span suppressHydrationWarning>{timeFormatted}</span>
                                     {isMe &&
                                       (msg.isRead ? (
@@ -1227,9 +1486,9 @@ function ChatContent() {
                             )}
                           </div>
 
-                          {/* Action Buttons on Hover for Received Messages (React) */}
+                          {/* Reactions stay visible; other actions live in the dropdown. */}
                           {!isMe && !msg.isDeleted && (
-                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity mb-1 shrink-0">
+                            <div className="flex items-center gap-0.5 mb-1 shrink-0">
                               <MessageReactions
                                 message={msg}
                                 currentUserId={currentUser?._id || ""}
@@ -1242,31 +1501,29 @@ function ChatContent() {
                                 }
                                 isPending={reactMessageMutation.isPending}
                               />
-                              <Tooltip content={t.chat.reply} position="top">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartReply(msg)}
-                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                  aria-label={t.chat.reply}
-                                >
-                                  <Reply className="h-3.5 w-3.5" />
-                                </button>
-                              </Tooltip>
-                              <Tooltip content={t.chat.forwardMessage} position="top">
-                                <button
-                                  type="button"
-                                  onClick={() => handleForwardMessage(msg)}
-                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-textSecondary hover:text-primary transition-colors cursor-pointer"
-                                  aria-label={t.chat.forwardMessage}
-                                >
-                                  <Forward className="h-3.5 w-3.5" />
-                                </button>
-                              </Tooltip>
+                              <MessageActionsMenu
+                                isMe={false}
+                                isOpen={openMessageMenuId === msg._id}
+                                isPinned={Boolean(msg.isPinned)}
+                                isStarred={Boolean(msg.isStarred)}
+                                hasText={hasText}
+                                isPinPending={pinMessageMutation.isPending}
+                                isStarPending={starMessageMutation.isPending}
+                                onToggle={() => setOpenMessageMenuId(openMessageMenuId === msg._id ? null : msg._id)}
+                                onClose={() => setOpenMessageMenuId(null)}
+                                onReply={() => handleStartReply(msg)}
+                                onForward={() => handleForwardMessage(msg)}
+                                onPin={() => pinMessageMutation.mutate(msg._id)}
+                                onStar={() => starMessageMutation.mutate(msg._id)}
+                                onEdit={() => handleStartEdit(msg)}
+                                onDelete={() => setDeleteModalMessageId(msg._id)}
+                              />
                             </div>
                           )}
                         </div>
                       );
-                    })
+                    })}
+                    </>
                   )}
                   <div ref={messagesEndRef} />
                 </div>

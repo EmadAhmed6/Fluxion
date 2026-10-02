@@ -18,6 +18,8 @@ export interface IChat {
   isRead: boolean;
   isEdited?: boolean;
   isForwarded?: boolean;
+  isPinned?: boolean;
+  isStarred?: boolean;
   reactions?: IReaction[];
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +61,14 @@ const ChatSchema = new Schema(
       ref: "Chat",
     },
     isForwarded: {
+      type: Boolean,
+      default: false,
+    },
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+    isStarred: {
       type: Boolean,
       default: false,
     },

@@ -12,6 +12,10 @@ import {
   sendMessage,
   forwardMessage,
   sendAudioMessage,
+  pinMessage,
+  starMessage,
+  getPinnedMessages,
+  getStarredMessages,
 } from "./chat.controller.js";
 
 const router = express.Router();
@@ -46,9 +50,12 @@ router.post(
   forwardMessage,
 );
 router.get("/:userId", verifyToken, getMessages);
+router.get("/:userId/pinned", verifyToken, getPinnedMessages);
+router.get("/:userId/starred", verifyToken, getStarredMessages);
 router.patch("/:userId/read", verifyToken, markAsRead);
 router.patch("/:messageId/react", verifyToken, reactMessage);
-
+router.patch("/:messageId/pin", verifyToken, pinMessage);
+router.patch("/:messageId/star", verifyToken, starMessage);
 router
   .route("/:messageId")
   .patch(verifyToken, editMessage)

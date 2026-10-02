@@ -119,7 +119,7 @@ export function MessageReactions({
         className={`p-1.5 rounded-full transition-all cursor-pointer flex items-center justify-center ${
           isPickerOpen
             ? "bg-primary/20 text-primary scale-110"
-            : "hover:bg-primary/10 text-textSecondary hover:text-primary opacity-0 group-hover:opacity-100"
+            : "hover:bg-primary/10 text-textSecondary hover:text-primary"
         }`}
         title={t.chat.react}
       >
